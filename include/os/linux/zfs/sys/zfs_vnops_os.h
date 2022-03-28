@@ -26,16 +26,28 @@
 #define	_SYS_FS_ZFS_VNOPS_OS_H
 
 #include <sys/vnode.h>
-#include <sys/xvattr.h>
 #include <sys/uio.h>
 #include <sys/cred.h>
 #include <sys/fcntl.h>
 #include <sys/pathname.h>
-#include <sys/zpl.h>
 #include <sys/zfs_file.h>
+
+#ifdef _KERNEL
+#include <sys/xvattr.h>
+#include <sys/zpl.h>
+#endif
 
 #ifdef	__cplusplus
 extern "C" {
+#endif
+
+#ifndef _KERNEL
+// FIXME(hping)
+struct inode;
+struct znode;
+typedef struct znode znode_t;
+typedef struct dir_context zpl_dir_context_t;
+
 #endif
 
 extern int zfs_open(struct inode *ip, int mode, int flag, cred_t *cr);
