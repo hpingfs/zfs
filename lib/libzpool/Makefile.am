@@ -12,6 +12,7 @@ DEFAULT_INCLUDES += -I$(top_srcdir)/include/os/freebsd/zfs
 endif
 if BUILD_LINUX
 DEFAULT_INCLUDES += -I$(top_srcdir)/include/os/linux/zfs
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/spl
 endif
 
 # Unconditionally enable debugging for libzpool
@@ -177,7 +178,8 @@ KERNEL_C = \
 	zio_inject.c \
 	zle.c \
 	zrlock.c \
-	zthr.c
+	zthr.c \
+	uzfs_uio.c
 
 LUA_C = \
 	lapi.c \

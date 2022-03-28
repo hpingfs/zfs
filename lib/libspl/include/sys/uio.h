@@ -40,6 +40,7 @@
 #ifndef	_LIBSPL_SYS_UIO_H
 #define	_LIBSPL_SYS_UIO_H
 
+#include <sys/debug.h>
 #include <sys/types.h>
 #include_next <sys/uio.h>
 
@@ -66,13 +67,14 @@ typedef enum uio_seg  zfs_uio_seg_t;
 #endif
 
 typedef struct zfs_uio {
-	struct iovec	*uio_iov;	/* pointer to array of iovecs */
+	const struct iovec	*uio_iov;	/* pointer to array of iovecs */
 	int		uio_iovcnt;	/* number of iovecs */
 	offset_t	uio_loffset;	/* file offset */
 	zfs_uio_seg_t	uio_segflg;	/* address space (kernel or user) */
 	uint16_t	uio_fmode;	/* file mode flags */
 	uint16_t	uio_extflg;	/* extended flags */
 	ssize_t		uio_resid;	/* residual count */
+	size_t		uio_skip;
 } zfs_uio_t;
 
 #define	zfs_uio_segflg(uio)		(uio)->uio_segflg
@@ -83,30 +85,33 @@ typedef struct zfs_uio {
 #define	zfs_uio_iovbase(uio, idx)	(uio)->uio_iov[(idx)].iov_base
 
 static inline void
-zfs_uio_iov_at_index(zfs_uio_t *uio, uint_t idx, void **base, uint64_t *len)
-{
-	*base = zfs_uio_iovbase(uio, idx);
-	*len = zfs_uio_iovlen(uio, idx);
-}
-
-static inline void
 zfs_uio_advance(zfs_uio_t *uio, size_t size)
 {
 	uio->uio_resid -= size;
 	uio->uio_loffset += size;
 }
 
-static inline offset_t
-zfs_uio_index_at_offset(zfs_uio_t *uio, offset_t off, uint_t *vec_idx)
+static inline void
+zfs_uio_setoffset(zfs_uio_t *uio, offset_t off)
 {
-	*vec_idx = 0;
-	while (*vec_idx < (uint_t)zfs_uio_iovcnt(uio) &&
-	    off >= (offset_t)zfs_uio_iovlen(uio, *vec_idx)) {
-		off -= zfs_uio_iovlen(uio, *vec_idx);
-		(*vec_idx)++;
-	}
+	uio->uio_loffset = off;
+}
 
-	return (off);
+static inline void
+zfs_uio_iovec_init(zfs_uio_t *uio, const struct iovec *iov,
+    unsigned long nr_segs, offset_t offset, zfs_uio_seg_t seg, ssize_t resid,
+    size_t skip)
+{
+	ASSERT(seg == UIO_USERSPACE);
+
+	uio->uio_iov = iov;
+	uio->uio_iovcnt = nr_segs;
+	uio->uio_loffset = offset;
+	uio->uio_segflg = seg;
+	uio->uio_fmode = 0;
+	uio->uio_extflg = 0;
+	uio->uio_resid = resid;
+	uio->uio_skip = skip;
 }
 
 #endif	/* _SYS_UIO_H */
