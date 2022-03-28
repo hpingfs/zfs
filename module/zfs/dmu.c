@@ -1196,7 +1196,6 @@ dmu_redact(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 	dmu_buf_rele_array(dbp, numbufs, FTAG);
 }
 
-#ifdef _KERNEL
 int
 dmu_read_uio_dnode(dnode_t *dn, zfs_uio_t *uio, uint64_t size)
 {
@@ -1392,7 +1391,6 @@ dmu_write_uio(objset_t *os, uint64_t object, zfs_uio_t *uio, uint64_t size,
 
 	return (err);
 }
-#endif /* _KERNEL */
 
 /*
  * Allocate a loaned anonymous arc buffer.

@@ -83,6 +83,12 @@ typedef struct zfs_uio {
 #define	zfs_uio_iovcnt(uio)		(uio)->uio_iovcnt
 #define	zfs_uio_iovlen(uio, idx)	(uio)->uio_iov[(idx)].iov_len
 #define	zfs_uio_iovbase(uio, idx)	(uio)->uio_iov[(idx)].iov_base
+#define	zfs_uio_rlimit_fsize(z, u)	(0)
+#define	zfs_uio_fault_move(p, n, rw, u)	zfs_uiomove((p), (n), (rw), (u))
+
+extern int zfs_uiomove(void *, size_t, zfs_uio_rw_t, zfs_uio_t *);
+extern int zfs_uiocopy(void *, size_t, zfs_uio_rw_t, zfs_uio_t *, size_t *);
+extern void zfs_uioskip(zfs_uio_t *, size_t);
 
 static inline void
 zfs_uio_advance(zfs_uio_t *uio, size_t size)
