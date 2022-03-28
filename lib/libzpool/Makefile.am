@@ -180,7 +180,8 @@ KERNEL_C = \
 	zrlock.c \
 	zthr.c \
 	uzfs_uio.c \
-	zfs_vfsops.c
+	zfs_vfsops.c \
+	zfs_ctldir.c
 
 LUA_C = \
 	lapi.c \
