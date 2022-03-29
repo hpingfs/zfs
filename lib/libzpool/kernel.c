@@ -1522,3 +1522,33 @@ void inc_nlink(struct inode *inode)
 //
 //    inode->__i_nlink++;
 }
+
+/**
+ * timespec_trunc - Truncate timespec to a granularity
+ * @t: Timespec
+ * @gran: Granularity in ns.
+ *
+ * Truncate a timespec to a granularity. gran must be smaller than a second.
+ * Always rounds down.
+ *
+ * This function should be only used for timestamps returned by
+ * current_kernel_time() or CURRENT_TIME, not with do_gettimeofday() because
+ * it doesn't handle the better resolution of the latter.
+ */
+struct timespec timespec_trunc(struct timespec t, unsigned gran)
+{
+//    /*
+//     * Division is pretty slow so avoid it for common cases.
+//     * Currently current_kernel_time() never returns better than
+//     * jiffies resolution. Exploit that.
+//     */
+//    if (gran <= jiffies_to_usecs(1) * 1000) {
+//        /* nothing */
+//    } else if (gran == 1000000000) {
+//        t.tv_nsec = 0;
+//    } else {
+//        t.tv_nsec -= t.tv_nsec % gran;
+//    }
+    return t;
+}
+

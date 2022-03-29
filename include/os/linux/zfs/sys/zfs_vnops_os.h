@@ -46,7 +46,19 @@ extern "C" {
 struct inode;
 struct znode;
 typedef struct znode znode_t;
-typedef struct dir_context zpl_dir_context_t;
+struct user_namespace;
+
+typedef int (*filldir_t)(void *, const char *, int, loff_t, unsigned long long, unsigned);
+typedef struct zpl_dir_context {
+	void *dirent;
+	const filldir_t actor;
+	loff_t pos;
+} zpl_dir_context_t;
+
+#define FMODE_WRITE     (0x2)
+
+#define zpl_inode_timestamp_truncate(ts, ip)    \
+        timespec_trunc(ts, (ip)->i_sb->s_time_gran)
 
 #endif
 
@@ -80,13 +92,16 @@ extern void zfs_inactive(struct inode *ip);
 extern int zfs_space(znode_t *zp, int cmd, flock64_t *bfp, int flag,
     offset_t offset, cred_t *cr);
 extern int zfs_fid(struct inode *ip, fid_t *fidp);
+extern int zfs_dirty_inode(struct inode *ip, int flags);
+extern void zfs_zrele_async(znode_t *zp);
+
+#ifdef _KERNEL
 extern int zfs_getpage(struct inode *ip, struct page *pl[], int nr_pages);
 extern int zfs_putpage(struct inode *ip, struct page *pp,
     struct writeback_control *wbc);
-extern int zfs_dirty_inode(struct inode *ip, int flags);
 extern int zfs_map(struct inode *ip, offset_t off, caddr_t *addrp,
     size_t len, unsigned long vm_flags);
-extern void zfs_zrele_async(znode_t *zp);
+#endif
 
 #ifdef	__cplusplus
 }

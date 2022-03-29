@@ -755,6 +755,7 @@ typedef	int	umode_t;
 typedef unsigned int kuid_t;
 typedef unsigned int kgid_t;
 
+extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
 /*
  * Kernel modules
  */
