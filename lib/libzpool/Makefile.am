@@ -186,7 +186,8 @@ KERNEL_C = \
 	zfs_acl.c \
 	zfs_log.c \
 	zfs_quota.c \
-	zfs_replay.c
+	zfs_replay.c \
+	zfs_vnops.c
 
 LUA_C = \
 	lapi.c \
