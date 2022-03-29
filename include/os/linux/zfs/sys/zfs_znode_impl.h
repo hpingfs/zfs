@@ -44,11 +44,6 @@ extern "C" {
 #endif
 
 #ifndef _KERNEL
-typedef	int	umode_t;
-
-typedef unsigned int kuid_t;
-typedef unsigned int kgid_t;
-
 /*
  * Keep mostly read-only and often accessed (especially for
  * the RCU path lookup and 'stat' data) fields at the beginning

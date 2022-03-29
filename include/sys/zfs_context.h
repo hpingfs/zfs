@@ -510,94 +510,36 @@ extern int	taskq_cancel_id(taskq_t *, taskqid_t);
 extern void	system_taskq_init(void);
 extern void	system_taskq_fini(void);
 
-#define	XVA_MAPSIZE	3
-#define	XVA_MAGIC	0x78766174
-
-extern char *vn_dumpdir;
-#define	AV_SCANSTAMP_SZ	32		/* length of anti-virus scanstamp */
-
-typedef struct xoptattr {
-	inode_timespec_t xoa_createtime;	/* Create time of file */
-	uint8_t		xoa_archive;
-	uint8_t		xoa_system;
-	uint8_t		xoa_readonly;
-	uint8_t		xoa_hidden;
-	uint8_t		xoa_nounlink;
-	uint8_t		xoa_immutable;
-	uint8_t		xoa_appendonly;
-	uint8_t		xoa_nodump;
-	uint8_t		xoa_settable;
-	uint8_t		xoa_opaque;
-	uint8_t		xoa_av_quarantined;
-	uint8_t		xoa_av_modified;
-	uint8_t		xoa_av_scanstamp[AV_SCANSTAMP_SZ];
-	uint8_t		xoa_reparse;
-	uint8_t		xoa_offline;
-	uint8_t		xoa_sparse;
-} xoptattr_t;
-
 #define	LOOKUP_DIR		0x01
 #define	LOOKUP_XATTR		0x02
 #define	CREATE_XATTR_DIR	0x04
 #define	ATTR_NOACLCHECK		0x20
 
-typedef struct vattr {
-	uint32_t	va_mask;	/* attribute bit-mask */
-	ushort_t	va_mode;	/* acc mode */
-	uid_t		va_uid;		/* owner uid */
-	gid_t		va_gid;		/* owner gid */
-	long		va_fsid;	/* fs id */
-	long		va_nodeid;	/* node # */
-	uint32_t	va_nlink;	/* # links */
-	uint64_t	va_size;	/* file size */
-	inode_timespec_t va_atime;	/* last acc */
-	inode_timespec_t va_mtime;	/* last mod */
-	inode_timespec_t va_ctime;	/* last chg */
-	dev_t		va_rdev;	/* dev */
-	uint64_t	va_nblocks;	/* space used */
-	uint32_t	va_blksize;	/* block size */
-	struct dentry	*va_dentry;	/* dentry to wire */
-} vattr_t;
-
-typedef struct xvattr {
-	vattr_t		xva_vattr;	/* Embedded vattr structure */
-	uint32_t	xva_magic;	/* Magic Number */
-	uint32_t	xva_mapsize;	/* Size of attr bitmap (32-bit words) */
-	uint32_t	*xva_rtnattrmapp;	/* Ptr to xva_rtnattrmap[] */
-	uint32_t	xva_reqattrmap[XVA_MAPSIZE];	/* Requested attrs */
-	uint32_t	xva_rtnattrmap[XVA_MAPSIZE];	/* Returned attrs */
-	xoptattr_t	xva_xoptattrs;	/* Optional attributes */
-} xvattr_t;
-
-typedef struct vsecattr {
-	uint_t		vsa_mask;	/* See below */
-	int		vsa_aclcnt;	/* ACL entry count */
-	void		*vsa_aclentp;	/* pointer to ACL entries */
-	int		vsa_dfaclcnt;	/* default ACL entry count */
-	void		*vsa_dfaclentp;	/* pointer to default ACL entries */
-	size_t		vsa_aclentsz;	/* ACE size in bytes of vsa_aclentp */
-} vsecattr_t;
-
-#define	AT_MODE		0x00002
-#define	AT_UID		0x00004
-#define	AT_GID		0x00008
-#define	AT_FSID		0x00010
-#define	AT_NODEID	0x00020
-#define	AT_NLINK	0x00040
-#define	AT_SIZE		0x00080
-#define	AT_ATIME	0x00100
-#define	AT_MTIME	0x00200
-#define	AT_CTIME	0x00400
-#define	AT_RDEV		0x00800
-#define	AT_BLKSIZE	0x01000
-#define	AT_NBLOCKS	0x02000
-#define	AT_SEQ		0x08000
-#define	AT_XVATTR	0x10000
-
-#define	CRCREAT		0
-
-#define	F_FREESP	11
 #define	FIGNORECASE	0x80000 /* request case-insensitive lookups */
+
+// FIXME(hping) from kernel linux/fs.h
+/*
+ * Attribute flags.  These should be or-ed together to figure out what
+ * has been changed!
+ */
+#define ATTR_MODE   (1 << 0)
+#define ATTR_UID    (1 << 1)
+#define ATTR_GID    (1 << 2)
+#define ATTR_SIZE   (1 << 3)
+#define ATTR_ATIME  (1 << 4)
+#define ATTR_MTIME  (1 << 5)
+#define ATTR_CTIME  (1 << 6)
+#define ATTR_ATIME_SET  (1 << 7)
+#define ATTR_MTIME_SET  (1 << 8)
+#define ATTR_FORCE  (1 << 9) /* Not a change, but a change it */
+#define ATTR_ATTR_FLAG  (1 << 10)
+#define ATTR_KILL_SUID  (1 << 11)
+#define ATTR_KILL_SGID  (1 << 12)
+#define ATTR_FILE   (1 << 13)
+#define ATTR_KILL_PRIV  (1 << 14)
+#define ATTR_OPEN   (1 << 15) /* Truncating from open(O_TRUNC) */
+#define ATTR_TIMES_SET  (1 << 16)
+#define ATTR_TOUCH  (1 << 17)
 
 /*
  * Random stuff
@@ -802,19 +744,17 @@ extern void inc_nlink(struct inode *inode);
     const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
     (type *)( (char *)__mptr - offsetof(type,member) );})
 
-#define ATTR_UID AT_UID
-#define ATTR_GID AT_GID
-#define ATTR_MODE AT_MODE
-#define ATTR_XVATTR AT_XVATTR
-#define ATTR_CTIME  AT_CTIME
-#define ATTR_MTIME  AT_MTIME
-#define ATTR_ATIME  AT_ATIME
-
 typedef struct {
             int counter;
 } atomic_t;
 
 extern int atomic_read(const atomic_t *v);
+
+typedef	int	umode_t;
+
+typedef unsigned int kuid_t;
+typedef unsigned int kgid_t;
+
 /*
  * Kernel modules
  */
