@@ -49,10 +49,6 @@ typedef	int	umode_t;
 typedef unsigned int kuid_t;
 typedef unsigned int kgid_t;
 
-typedef struct {
-        int counter;
-} atomic_t;
-
 /*
  * Keep mostly read-only and often accessed (especially for
  * the RCU path lookup and 'stat' data) fields at the beginning
@@ -125,9 +121,9 @@ struct inode {
 //		struct rcu_head		i_rcu;
 //	};
 //	__u64			i_version;
-//	atomic_t		i_count;
-//	atomic_t		i_dio_count;
-//	atomic_t		i_writecount;
+	atomic_t		i_count;
+	atomic_t		i_dio_count;
+	atomic_t		i_writecount;
 //	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
 //	struct file_lock	*i_flock;
 //	struct address_space	i_data;

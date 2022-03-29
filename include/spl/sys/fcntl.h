@@ -26,7 +26,8 @@
 //#include <asm/fcntl.h>
 #include_next <fcntl.h>
 
-#define	F_FREESP 11
+// already defined in zfs_context.h
+//#define	F_FREESP 11
 
 #ifdef CONFIG_64BIT
 typedef struct flock flock64_t;

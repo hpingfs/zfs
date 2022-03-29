@@ -181,7 +181,8 @@ KERNEL_C = \
 	zthr.c \
 	uzfs_uio.c \
 	zfs_vfsops.c \
-	zfs_ctldir.c
+	zfs_ctldir.c \
+	zfs_dir.c
 
 LUA_C = \
 	lapi.c \

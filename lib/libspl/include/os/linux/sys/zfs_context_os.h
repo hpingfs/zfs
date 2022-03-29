@@ -25,4 +25,8 @@
 
 #define	HAVE_LARGE_STACKS	1
 
+// FIXME(hping): from os/linux/spl/sys/file.h
+#define	FKIOCTL			0x80000000
+#define	ED_CASE_CONFLICT	0x10
+
 #endif

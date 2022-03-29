@@ -536,11 +536,28 @@ typedef struct xoptattr {
 	uint8_t		xoa_sparse;
 } xoptattr_t;
 
-typedef struct vattr {
-	uint_t		va_mask;	/* bit-mask of attributes */
-	u_offset_t	va_size;	/* file size in bytes */
-} vattr_t;
+#define	LOOKUP_DIR		0x01
+#define	LOOKUP_XATTR		0x02
+#define	CREATE_XATTR_DIR	0x04
+#define	ATTR_NOACLCHECK		0x20
 
+typedef struct vattr {
+	uint32_t	va_mask;	/* attribute bit-mask */
+	ushort_t	va_mode;	/* acc mode */
+	uid_t		va_uid;		/* owner uid */
+	gid_t		va_gid;		/* owner gid */
+	long		va_fsid;	/* fs id */
+	long		va_nodeid;	/* node # */
+	uint32_t	va_nlink;	/* # links */
+	uint64_t	va_size;	/* file size */
+	inode_timespec_t va_atime;	/* last acc */
+	inode_timespec_t va_mtime;	/* last mod */
+	inode_timespec_t va_ctime;	/* last chg */
+	dev_t		va_rdev;	/* dev */
+	uint64_t	va_nblocks;	/* space used */
+	uint32_t	va_blksize;	/* block size */
+	struct dentry	*va_dentry;	/* dentry to wire */
+} vattr_t;
 
 typedef struct xvattr {
 	vattr_t		xva_vattr;	/* Embedded vattr structure */
@@ -766,7 +783,38 @@ extern void spl_fstrans_unmark(fstrans_cookie_t);
 extern int __spl_pf_fstrans_check(void);
 extern int kmem_cache_reap_active(void);
 
+// FIXME(hping)
+extern struct inode *igrab(struct inode *inode);
+extern void iput(struct inode *inode);
+extern void drop_nlink(struct inode *inode);
+extern void clear_nlink(struct inode *inode);
+extern void set_nlink(struct inode *inode, unsigned int nlink);
+extern void inc_nlink(struct inode *inode);
 
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:    the pointer to the member.
+ * @type:   the type of the container struct this is embedded in.
+ * @member: the name of the member within the struct.
+ *
+ */
+#define container_of(ptr, type, member) ({          \
+    const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+    (type *)( (char *)__mptr - offsetof(type,member) );})
+
+#define ATTR_UID AT_UID
+#define ATTR_GID AT_GID
+#define ATTR_MODE AT_MODE
+#define ATTR_XVATTR AT_XVATTR
+#define ATTR_CTIME  AT_CTIME
+#define ATTR_MTIME  AT_MTIME
+#define ATTR_ATIME  AT_ATIME
+
+typedef struct {
+            int counter;
+} atomic_t;
+
+extern int atomic_read(const atomic_t *v);
 /*
  * Kernel modules
  */

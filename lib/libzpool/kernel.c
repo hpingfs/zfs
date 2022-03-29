@@ -1405,3 +1405,120 @@ zfsvfs_update_fromname(const char *oldname, const char *newname)
 {
 	(void) oldname, (void) newname;
 }
+
+struct inode *igrab(struct inode *inode)
+{
+    return inode;
+//    spin_lock(&inode->i_lock);
+//    if (!(inode->i_state & (I_FREEING|I_WILL_FREE))) {
+//        __iget(inode);
+//        spin_unlock(&inode->i_lock);
+//    } else {
+//        spin_unlock(&inode->i_lock);
+//        /*
+//         * Handle the case where s_op->clear_inode is not been
+//         * called yet, and somebody is calling igrab
+//         * while the inode is getting freed.
+//         */
+//        inode = NULL;
+//    }
+//    return inode;
+}
+
+/**
+ *  iput    - put an inode
+ *  @inode: inode to put
+ *
+ *  Puts an inode, dropping its usage count. If the inode use count hits
+ *  zero, the inode is then freed and may also be destroyed.
+ *
+ *  Consequently, iput() can sleep.
+ */
+void iput(struct inode *inode)
+{
+//    if (inode) {
+//        BUG_ON(inode->i_state & I_CLEAR);
+//
+//        if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock))
+//            iput_final(inode);
+//    }
+}
+
+int atomic_read(const atomic_t *v)
+{
+    return (v->counter);
+}
+
+/**
+ * drop_nlink - directly drop an inode's link count
+ * @inode: inode
+ *
+ * This is a low-level filesystem helper to replace any
+ * direct filesystem manipulation of i_nlink.  In cases
+ * where we are attempting to track writes to the
+ * filesystem, a decrement to zero means an imminent
+ * write when the file is truncated and actually unlinked
+ * on the filesystem.
+ */
+void drop_nlink(struct inode *inode)
+{
+//    WARN_ON(inode->i_nlink == 0);
+//    inode->__i_nlink--;
+//    if (!inode->i_nlink)
+//        atomic_long_inc(&inode->i_sb->s_remove_count);
+}
+
+/**
+ * clear_nlink - directly zero an inode's link count
+ * @inode: inode
+ *
+ * This is a low-level filesystem helper to replace any
+ * direct filesystem manipulation of i_nlink.  See
+ * drop_nlink() for why we care about i_nlink hitting zero.
+ */
+void clear_nlink(struct inode *inode)
+{
+//    if (inode->i_nlink) {
+//        inode->__i_nlink = 0;
+//        atomic_long_inc(&inode->i_sb->s_remove_count);
+//    }
+}
+
+/**
+ * set_nlink - directly set an inode's link count
+ * @inode: inode
+ * @nlink: new nlink (should be non-zero)
+ *
+ * This is a low-level filesystem helper to replace any
+ * direct filesystem manipulation of i_nlink.
+ */
+void set_nlink(struct inode *inode, unsigned int nlink)
+{
+//    if (!nlink) {
+//        clear_nlink(inode);
+//    } else {
+//        /* Yes, some filesystems do change nlink from zero to one */
+//        if (inode->i_nlink == 0)
+//            atomic_long_dec(&inode->i_sb->s_remove_count);
+//
+//        inode->__i_nlink = nlink;
+//    }
+}
+
+/**
+ * inc_nlink - directly increment an inode's link count
+ * @inode: inode
+ *
+ * This is a low-level filesystem helper to replace any
+ * direct filesystem manipulation of i_nlink.  Currently,
+ * it is only here for parity with dec_nlink().
+ */
+void inc_nlink(struct inode *inode)
+{
+//    if (unlikely(inode->i_nlink == 0)) {
+//        WARN_ON(!(inode->i_state & I_LINKABLE));
+//        atomic_long_dec(&inode->i_sb->s_remove_count);
+//    }
+//
+//    inode->__i_nlink++;
+}
