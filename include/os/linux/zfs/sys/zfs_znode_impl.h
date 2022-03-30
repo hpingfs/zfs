@@ -51,6 +51,7 @@ struct file_operations;
 
 struct super_block {
 	void 			*s_fs_info;	/* Filesystem private info */
+	unsigned long		s_flags;
 	unsigned int    s_time_gran;
 };
 

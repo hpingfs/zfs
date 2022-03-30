@@ -768,6 +768,36 @@ extern struct timespec current_time(struct inode *ip);
 
 #define S_IRWXUGO   (S_IRWXU|S_IRWXG|S_IRWXO)
 
+// FIXME(hping) from os/linux/kernel/linux/vfs_compat.h
+/*
+ * 4.14 adds SB_* flag definitions, define them to MS_* equivalents
+ * if not set.
+ */
+#ifndef SB_RDONLY
+#define SB_RDONLY   MS_RDONLY
+#endif
+
+#ifndef SB_SILENT
+#define SB_SILENT   MS_SILENT
+#endif
+
+#ifndef SB_ACTIVE
+#define SB_ACTIVE   MS_ACTIVE
+#endif
+
+#ifndef SB_POSIXACL
+#define SB_POSIXACL MS_POSIXACL
+#endif
+
+#ifndef SB_MANDLOCK
+#define SB_MANDLOCK MS_MANDLOCK
+#endif
+
+#ifndef SB_NOATIME
+#define SB_NOATIME  MS_NOATIME
+#endif
+
+
 /*
  * Kernel modules
  */
