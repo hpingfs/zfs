@@ -303,6 +303,13 @@ extern void rw_exit(krwlock_t *rwlp);
 #define	rw_downgrade(rwlp) do { } while (0)
 
 /*
+ * Spin lock
+ */
+typedef pthread_spinlock_t spinlock_t;
+#define spin_lock(lock) pthread_spin_lock(lock)
+#define spin_unlock(lock) pthread_spin_unlock(lock)
+
+/*
  * Credentials
  */
 extern uid_t crgetuid(cred_t *cr);
@@ -426,13 +433,51 @@ void procfs_list_add(procfs_list_t *procfs_list, void *p);
 
 typedef umem_cache_t kmem_cache_t;
 
+/*
+ * Slab allocation interfaces.  The SPL slab differs from the standard
+ * Linux SLAB or SLUB primarily in that each cache may be backed by slabs
+ * allocated from the physical or virtual memory address space.  The virtual
+ * slabs allow for good behavior when allocation large objects of identical
+ * size.  This slab implementation also supports both constructors and
+ * destructors which the Linux slab does not.
+ */
+typedef enum kmc_bit {
+    KMC_BIT_NODEBUG     = 1,    /* Default behavior */
+    KMC_BIT_KVMEM       = 7,    /* Use kvmalloc linux allocator  */
+    KMC_BIT_SLAB        = 8,    /* Use Linux slab cache */
+    KMC_BIT_DEADLOCKED  = 14,   /* Deadlock detected */
+    KMC_BIT_GROWING     = 15,   /* Growing in progress */
+    KMC_BIT_REAPING     = 16,   /* Reaping in progress */
+    KMC_BIT_DESTROY     = 17,   /* Destroy in progress */
+    KMC_BIT_TOTAL       = 18,   /* Proc handler helper bit */
+    KMC_BIT_ALLOC       = 19,   /* Proc handler helper bit */
+    KMC_BIT_MAX     = 20,   /* Proc handler helper bit */
+} kmc_bit_t;
+
+/* kmem move callback return values */
 typedef enum kmem_cbrc {
-	KMEM_CBRC_YES,
-	KMEM_CBRC_NO,
-	KMEM_CBRC_LATER,
-	KMEM_CBRC_DONT_NEED,
-	KMEM_CBRC_DONT_KNOW
+    KMEM_CBRC_YES       = 0,    /* Object moved */
+    KMEM_CBRC_NO        = 1,    /* Object not moved */
+    KMEM_CBRC_LATER     = 2,    /* Object not moved, try again later */
+    KMEM_CBRC_DONT_NEED = 3,    /* Neither object is needed */
+    KMEM_CBRC_DONT_KNOW = 4,    /* Object unknown */
 } kmem_cbrc_t;
+
+//#define KMC_NODEBUG     (1 << KMC_BIT_NODEBUG)
+//#define KMC_KVMEM       (1 << KMC_BIT_KVMEM)
+#define KMC_SLAB        (1 << KMC_BIT_SLAB)
+//#define KMC_DEADLOCKED      (1 << KMC_BIT_DEADLOCKED)
+//#define KMC_GROWING     (1 << KMC_BIT_GROWING)
+//#define KMC_REAPING     (1 << KMC_BIT_REAPING)
+//#define KMC_DESTROY     (1 << KMC_BIT_DESTROY)
+//#define KMC_TOTAL       (1 << KMC_BIT_TOTAL)
+//#define KMC_ALLOC       (1 << KMC_BIT_ALLOC)
+//#define KMC_MAX         (1 << KMC_BIT_MAX)
+//
+//#define KMC_REAP_CHUNK      INT_MAX
+//#define KMC_DEFAULT_SEEKS   1
+//
+//#define KMC_RECLAIM_ONCE    0x1 /* Force a single shrinker pass */
 
 /*
  * Task queues
@@ -797,6 +842,23 @@ extern struct timespec current_time(struct inode *ip);
 #define SB_NOATIME  MS_NOATIME
 #endif
 
+/*
+ * Inode flags - they have no relation to superblock flags now
+ */
+#define S_SYNC      1   /* Writes are synced at once */
+#define S_NOATIME   2   /* Do not update access times */
+#define S_APPEND    4   /* Append-only file */
+#define S_IMMUTABLE 8   /* Immutable file */
+#define S_DEAD      16  /* removed, but still open directory */
+#define S_NOQUOTA   32  /* Inode is not counted to quota */
+#define S_DIRSYNC   64  /* Directory modifications are synchronous */
+#define S_NOCMTIME  128 /* Do not update file c/mtime */
+#define S_SWAPFILE  256 /* Do not truncate: swapon got its bmaps */
+#define S_PRIVATE   512 /* Inode is fs-internal */
+#define S_IMA       1024    /* Inode has an associated IMA struct */
+#define S_AUTOMOUNT 2048    /* Automount/referral quasi-directory */
+#define S_NOSEC     4096    /* no suid or xattr security attributes */
+#define S_IOPS_WRAPPER  8192    /* i_op points to struct inode_operations_wrapper */
 
 /*
  * Kernel modules

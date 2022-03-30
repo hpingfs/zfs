@@ -98,14 +98,14 @@ struct inode {
 	struct timespec		i_atime;
 	struct timespec		i_mtime;
 	struct timespec		i_ctime;
-//	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
+	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
 	unsigned short          i_bytes;
 	unsigned int		i_blkbits;
 //#if defined(CONFIG_IMA) && (defined(CONFIG_PPC64) || defined(CONFIG_S390))
 //	/* 4 bytes hole available on both required architectures */
 //	RH_KABI_FILL_HOLE(atomic_t		i_readcount)
 //#endif
-//	blkcnt_t		i_blocks;
+	blkcnt_t		i_blocks;
 //
 //#ifdef __NEED_I_SIZE_ORDERED
 //	seqcount_t		i_size_seqcount;
