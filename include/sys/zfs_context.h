@@ -929,7 +929,23 @@ struct cred {
 #error "Unsupported kernel"
 #endif
 
+#define make_kuid(ns, uid) KUIDT_INIT(uid)
+#define make_kgid(ns, gid) KGIDT_INIT(gid)
 
+#if defined(CONFIG_64BIT)
+#define	TIME_MAX			INT64_MAX
+#define	TIME_MIN			INT64_MIN
+#else
+#define	TIME_MAX			INT32_MAX
+#define	TIME_MIN			INT32_MIN
+#endif
+
+#define	TIMESPEC_OVERFLOW(ts)		\
+	((ts)->tv_sec < TIME_MIN || (ts)->tv_sec > TIME_MAX)
+
+
+#define task_io_account_read(n)
+#define task_io_account_write(n)
 /*
  * Kernel modules
  */

@@ -306,7 +306,8 @@ zfs_read(struct znode *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 	}
 
 	int64_t nread = start_resid - n;
-	dataset_kstats_update_read_kstats(&zfsvfs->z_kstat, nread);
+// FIXME(hping)
+//	dataset_kstats_update_read_kstats(&zfsvfs->z_kstat, nread);
 	task_io_account_read(nread);
 out:
 	zfs_rangelock_exit(lr);
@@ -716,7 +717,8 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 		zil_commit(zilog, zp->z_id);
 
 	const int64_t nwritten = start_resid - zfs_uio_resid(uio);
-	dataset_kstats_update_write_kstats(&zfsvfs->z_kstat, nwritten);
+// FIXME(hping)
+//	dataset_kstats_update_write_kstats(&zfsvfs->z_kstat, nwritten);
 	task_io_account_write(nwritten);
 
 	ZFS_EXIT(zfsvfs);

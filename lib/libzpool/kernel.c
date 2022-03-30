@@ -1451,6 +1451,44 @@ int atomic_read(const atomic_t *v)
 }
 
 /**
+ * atomic_set - set atomic variable
+ * @v: pointer of type atomic_t
+ * @i: required value
+ *
+ * Atomically sets the value of @v to @i.
+ */
+void atomic_set(atomic_t *v, int i)
+{
+	v->counter = i;
+}
+
+
+/**
+ * __atomic_add_unless - add unless the number is already a given value
+ * @v: pointer of type atomic_t
+ * @a: the amount to add to v...
+ * @u: ...unless v is equal to u.
+ *
+ * Atomically adds @a to @v, so long as @v was not already @u.
+ * Returns the old value of @v.
+ */
+int atomic_add_unless(atomic_t *v, int a, int u)
+{
+	int c, old;
+	c = atomic_read(v);
+//	for (;;) {
+//		if (unlikely(c == (u)))
+//			break;
+//		old = atomic_cmpxchg((v), c, c + (a));
+//		if (likely(old == c))
+//			break;
+//		c = old;
+//	}
+	return c;
+}
+
+
+/**
  * drop_nlink - directly drop an inode's link count
  * @inode: inode
  *
@@ -1760,6 +1798,29 @@ inode_owner_or_capable(const struct inode *inode)
 }
 
 /**
+ * unlock_new_inode - clear the I_NEW state and wake up any waiters
+ * @inode:	new inode to unlock
+ *
+ * Called when the inode is fully initialised to clear the new state of the
+ * inode and wake up anyone waiting for the inode to finish initialisation.
+ */
+void unlock_new_inode(struct inode *inode)
+{
+//	lockdep_annotate_inode_mutex_key(inode);
+//	spin_lock(&inode->i_lock);
+//	WARN_ON(!(inode->i_state & I_NEW));
+//	inode->i_state &= ~I_NEW & ~I_CREATING;
+//	smp_mb();
+//	wake_up_bit(&inode->i_state, __I_NEW);
+//	spin_unlock(&inode->i_lock);
+}
+
+int insert_inode_locked(struct inode *inode)
+{
+    return 0;
+}
+
+/**
  * has_capability - Does a task have a capability in init_user_ns
  * @t: The task in question
  * @cap: The capability to be tested for
@@ -1791,4 +1852,111 @@ capable(int cap)
 {
     return B_FALSE;
 //    return ns_capable(&init_user_ns, cap);
+}
+
+/*
+ * NOTE: unlike i_size_read(), i_size_write() does need locking around it
+ * (normally i_mutex), otherwise on 32bit/SMP an update of i_size_seqcount
+ * can be lost, resulting in subsequent i_size_read() calls spinning forever.
+ */
+void i_size_write(struct inode *inode, loff_t i_size)
+{
+	inode->i_size = i_size;
+}
+
+/*
+ * inode_set_flags - atomically set some inode flags
+ *
+ * Note: the caller should be holding i_mutex, or else be sure that
+ * they have exclusive access to the inode structure (i.e., while the
+ * inode is being instantiated).  The reason for the cmpxchg() loop
+ * --- which wouldn't be necessary if all code paths which modify
+ * i_flags actually followed this rule, is that there is at least one
+ * code path which doesn't today so we use cmpxchg() out of an abundance
+ * of caution.
+ *
+ * In the long run, i_mutex is overkill, and we should probably look
+ * at using the i_lock spinlock to protect i_flags, and then make sure
+ * it is so documented in include/linux/fs.h and that all code follows
+ * the locking convention!!
+ */
+void inode_set_flags(struct inode *inode, unsigned int flags,
+		     unsigned int mask)
+{
+//	unsigned int old_flags, new_flags;
+//
+//	WARN_ON_ONCE(flags & ~mask);
+//	do {
+//		old_flags = ACCESS_ONCE(inode->i_flags);
+//		new_flags = (old_flags & ~mask) | flags;
+//	} while (unlikely(cmpxchg(&inode->i_flags, old_flags,
+//				  new_flags) != old_flags));
+}
+
+void mark_inode_dirty(struct inode *inode, int flags)
+{
+}
+
+uid_t zfs_uid_read(struct inode *ip)
+{
+    return 0;
+//	return (zfs_uid_read_impl(ip));
+}
+
+gid_t zfs_gid_read(struct inode *ip)
+{
+    return 0;
+//	return (zfs_gid_read_impl(ip));
+}
+
+void zfs_uid_write(struct inode *ip, uid_t uid)
+{
+	ip->i_uid = make_kuid(kcred->user_ns, uid);
+}
+
+void zfs_gid_write(struct inode *ip, gid_t gid)
+{
+	ip->i_gid = make_kgid(kcred->user_ns, gid);
+}
+
+/**
+ * truncate_setsize - update inode and pagecache for a new file size
+ * @inode: inode
+ * @newsize: new file size
+ *
+ * truncate_setsize updates i_size and performs pagecache truncation (if
+ * necessary) to @newsize. It will be typically be called from the filesystem's
+ * setattr function when ATTR_SIZE is passed in.
+ *
+ * Must be called with inode_mutex held and before all filesystem specific
+ * block truncation has been performed.
+ */
+void truncate_setsize(struct inode *inode, loff_t newsize)
+{
+//	loff_t oldsize = inode->i_size;
+//
+//	i_size_write(inode, newsize);
+//	if (newsize > oldsize)
+//		pagecache_isize_extended(inode, oldsize, newsize);
+//	truncate_pagecache(inode, newsize);
+}
+
+
+/*
+ * lhs < rhs:  return <0
+ * lhs == rhs: return 0
+ * lhs > rhs:  return >0
+ */
+int timespec_compare(const struct timespec *lhs, const struct timespec *rhs)
+{
+	if (lhs->tv_sec < rhs->tv_sec)
+		return -1;
+	if (lhs->tv_sec > rhs->tv_sec)
+		return 1;
+	return lhs->tv_nsec - rhs->tv_nsec;
+}
+
+void
+update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
+{
 }

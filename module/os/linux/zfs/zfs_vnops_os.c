@@ -1591,10 +1591,11 @@ zfs_readdir(struct inode *ip, zpl_dir_context_t *ctx, cred_t *cr)
 			type = ZFS_DIRENT_TYPE(zap.za_first_integer);
 		}
 
-		done = !zpl_dir_emit(ctx, zap.za_name, strlen(zap.za_name),
-		    objnum, type);
-		if (done)
-			break;
+// FIXME(hping)
+//		done = !zpl_dir_emit(ctx, zap.za_name, strlen(zap.za_name),
+//		    objnum, type);
+//		if (done)
+//			break;
 
 		/* Prefetch znode */
 		if (prefetch) {
