@@ -30,6 +30,7 @@
 #include <sys/isa_defs.h>
 #include <sys/types32.h>
 #include <sys/list.h>
+#include <sys/stat.h>
 #include <sys/dmu.h>
 #include <sys/sa.h>
 #include <sys/time.h>

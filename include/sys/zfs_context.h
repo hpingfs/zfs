@@ -800,6 +800,20 @@ typedef	int	umode_t;
 typedef unsigned int kuid_t;
 typedef unsigned int kgid_t;
 
+
+#define KUIDT_INIT(value) ((kuid_t) value )
+#define KGIDT_INIT(value) ((kgid_t) value )
+
+static inline kuid_t __kuid_val(kuid_t uid)
+{
+    return uid;
+}
+
+static inline kgid_t __kgid_val(kgid_t gid)
+{
+    return gid;
+}
+
 extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
 extern struct timespec current_kernel_time(void);
 
@@ -859,6 +873,53 @@ extern struct timespec current_time(struct inode *ip);
 #define S_AUTOMOUNT 2048    /* Automount/referral quasi-directory */
 #define S_NOSEC     4096    /* no suid or xattr security attributes */
 #define S_IOPS_WRAPPER  8192    /* i_op points to struct inode_operations_wrapper */
+
+#define printk(...) ((void) 0)
+
+#define mappedread(a,b,c) fake_mappedread(a,b,c)
+
+struct cred {
+//	atomic_t	usage;
+//#ifdef CONFIG_DEBUG_CREDENTIALS
+//	atomic_t	subscribers;	/* number of processes subscribed */
+//	void		*put_addr;
+//	unsigned	magic;
+//#define CRED_MAGIC	0x43736564
+//#define CRED_MAGIC_DEAD	0x44656144
+//#endif
+//	kuid_t		uid;		/* real UID of the task */
+//	kgid_t		gid;		/* real GID of the task */
+//	kuid_t		suid;		/* saved UID of the task */
+//	kgid_t		sgid;		/* saved GID of the task */
+//	kuid_t		euid;		/* effective UID of the task */
+//	kgid_t		egid;		/* effective GID of the task */
+//	kuid_t		fsuid;		/* UID for VFS ops */
+//	kgid_t		fsgid;		/* GID for VFS ops */
+//	unsigned	securebits;	/* SUID-less security management */
+//	kernel_cap_t	cap_inheritable; /* caps our children can inherit */
+//	kernel_cap_t	cap_permitted;	/* caps we're permitted */
+//	kernel_cap_t	cap_effective;	/* caps we can actually use */
+//	kernel_cap_t	cap_bset;	/* capability bounding set */
+//#ifdef CONFIG_KEYS
+//	unsigned char	jit_keyring;	/* default keyring to attach requested
+//					 * keys to */
+//	struct key __rcu *session_keyring; /* keyring inherited over fork */
+//	struct key	*process_keyring; /* keyring private to this process */
+//	struct key	*thread_keyring; /* keyring private to this thread */
+//	struct key	*request_key_auth; /* assumed request_key authority */
+//#endif
+//#ifdef CONFIG_SECURITY
+//	void		*security;	/* subjective LSM security */
+//#endif
+//	struct user_struct *user;	/* real user ID subscription */
+//	struct user_namespace *user_ns; /* user_ns the caps and keyrings are relative to. */
+//	struct group_info *group_info;	/* supplementary groups for euid/fsgid */
+//	struct rcu_head	rcu;		/* RCU deletion hook */
+//
+//	RH_KABI_EXTEND(kernel_cap_t cap_ambient)  /* Ambient capability set */
+};
+
+#define zfs_uio_fault_disable(u, set)
 
 /*
  * Kernel modules

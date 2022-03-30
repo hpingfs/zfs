@@ -25,11 +25,11 @@
 #ifndef	_SYS_FS_ZFS_STAT_H
 #define	_SYS_FS_ZFS_STAT_H
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 #include <sys/isa_defs.h>
 #include <sys/types32.h>
 #include <sys/dmu.h>
-#endif
+//#endif
 
 #ifdef	__cplusplus
 extern "C" {

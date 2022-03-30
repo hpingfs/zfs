@@ -1577,3 +1577,146 @@ current_time(struct inode *ip)
     return (timespec_trunc(current_kernel_time(), ip->i_sb->s_time_gran));
 }
 #endif
+
+struct inode *new_inode(struct super_block *sb) {
+    return NULL;
+}
+
+/*
+ * These are initializations that only need to be done
+ * once, because the fields are idempotent across use
+ * of the inode, so let the slab aware of that.
+ */
+void inode_init_once(struct inode *inode)
+{
+    memset(inode, 0, sizeof(*inode));
+//    INIT_HLIST_NODE(&inode->i_hash);
+//    INIT_LIST_HEAD(&inode->i_devices);
+//    INIT_LIST_HEAD(&inode->i_io_list);
+//    INIT_LIST_HEAD(&inode->i_lru);
+//    address_space_init_once(&inode->i_data);
+//    i_size_ordered_init(inode);
+}
+
+/**
+ * write_inode_now  -   write an inode to disk
+ * @inode: inode to write to disk
+ * @sync: whether the write should be synchronous or not
+ *
+ * This function commits an inode to disk immediately if it is dirty. This is
+ * primarily needed by knfsd.
+ *
+ * The caller must either have a ref on the inode or must have set I_WILL_FREE.
+ */
+int write_inode_now(struct inode *inode, int sync)
+{
+    return 0;
+//    struct bdi_writeback *wb = &inode_to_bdi(inode)->wb;
+//    struct writeback_control wbc = {
+//        .nr_to_write = LONG_MAX,
+//        .sync_mode = sync ? WB_SYNC_ALL : WB_SYNC_NONE,
+//        .range_start = 0,
+//        .range_end = LLONG_MAX,
+//    };
+//
+//    if (!mapping_cap_writeback_dirty(inode->i_mapping))
+//        wbc.nr_to_write = 0;
+//
+//    might_sleep();
+//    return writeback_single_inode(inode, wb, &wbc);
+}
+
+int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio) {
+    return 0;
+}
+
+int groupmember(gid_t gid, const cred_t *cr) {
+    return 0;
+}
+
+/**
+ * shrink_dcache_sb - shrink dcache for a superblock
+ * @sb: superblock
+ *
+ * Shrink the dcache for the specified super block. This is used to free
+ * the dcache before unmounting a file system.
+ */
+void shrink_dcache_sb(struct super_block *sb)
+{
+//    LIST_HEAD(tmp);
+//
+//    spin_lock(&dcache_lru_lock);
+//    while (!list_empty(&sb->s_dentry_lru)) {
+//        list_splice_init(&sb->s_dentry_lru, &tmp);
+//        spin_unlock(&dcache_lru_lock);
+//        shrink_dentry_list(&tmp);
+//        spin_lock(&dcache_lru_lock);
+//    }
+//    spin_unlock(&dcache_lru_lock);
+}
+
+/**
+ * fls - find last set bit in word
+ * @x: the word to search
+ *
+ * This is defined in a similar way as the libc and compiler builtin
+ * ffs, but returns the position of the most significant set bit.
+ *
+ * fls(value) returns 0 if value is 0 or the position of the last
+ * set bit if value is nonzero. The last (most significant) bit is
+ * at position 32.
+ */
+int fls(int x)
+{
+    int r;
+
+#ifdef CONFIG_X86_64
+    /*
+     * AMD64 says BSRL won't clobber the dest reg if x==0; Intel64 says the
+     * dest reg is undefined if x==0, but their CPU architect says its
+     * value is written to set it to the same as before, except that the
+     * top 32 bits will be cleared.
+     *
+     * We cannot do this on 32 bits because at the very least some
+     * 486 CPUs did not behave this way.
+     */
+    asm("bsrl %1,%0"
+        : "=r" (r)
+        : "rm" (x), "0" (-1));
+#elif defined(CONFIG_X86_CMOV)
+    asm("bsrl %1,%0\n\t"
+        "cmovzl %2,%0"
+        : "=&r" (r) : "rm" (x), "rm" (-1));
+#else
+    asm("bsrl %1,%0\n\t"
+        "jnz 1f\n\t"
+        "movl $-1,%0\n"
+        "1:" : "=r" (r) : "rm" (x));
+#endif
+    return r + 1;
+}
+
+void zpl_bdi_destroy(struct super_block *sb)
+{
+}
+
+int
+zfsvfs_parse_options(char *mntopts, vfs_t **vfsp)
+{
+    return 0;
+}
+
+/**
+ *  __remove_inode_hash - remove an inode from the hash
+ *  @inode: inode to unhash
+ *
+ *  Remove an inode from the superblock.
+ */
+void remove_inode_hash(struct inode *inode)
+{
+//    spin_lock(&inode_hash_lock);
+//    spin_lock(&inode->i_lock);
+//    hlist_del_init(&inode->i_hash);
+//    spin_unlock(&inode->i_lock);
+//    spin_unlock(&inode_hash_lock);
+}

@@ -135,3 +135,8 @@ zfs_uioskip(zfs_uio_t *uio, size_t n)
     uio->uio_loffset += n;
 	uio->uio_resid -= n;
 }
+
+int
+zfs_uio_prefaultpages(ssize_t n, zfs_uio_t *uio) {
+    return 0;
+}

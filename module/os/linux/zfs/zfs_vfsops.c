@@ -960,7 +960,8 @@ zfsvfs_free(zfsvfs_t *zfsvfs)
 	vmem_free(zfsvfs->z_hold_trees, sizeof (avl_tree_t) * size);
 	vmem_free(zfsvfs->z_hold_locks, sizeof (kmutex_t) * size);
 	zfsvfs_vfs_free(zfsvfs->z_vfs);
-	dataset_kstats_destroy(&zfsvfs->z_kstat);
+// FIXME(hping)
+//	dataset_kstats_destroy(&zfsvfs->z_kstat);
 	kmem_free(zfsvfs, sizeof (zfsvfs_t));
 }
 
@@ -1467,23 +1468,23 @@ zfs_domount(struct super_block *sb, zfs_mnt_t *zm, int silent)
 	ASSERT(zm);
 	ASSERT(osname);
 
-	error = zfsvfs_parse_options(zm->mnt_data, &vfs);
-	if (error)
-		return (error);
-
-	error = zfsvfs_create(osname, vfs->vfs_readonly, &zfsvfs);
-	if (error) {
-		zfsvfs_vfs_free(vfs);
-		goto out;
-	}
-
-	if ((error = dsl_prop_get_integer(osname, "recordsize",
-	    &recordsize, NULL))) {
-		zfsvfs_vfs_free(vfs);
-		goto out;
-	}
-
 // FIXME(hping)
+//	error = zfsvfs_parse_options(zm->mnt_data, &vfs);
+//	if (error)
+//		return (error);
+//
+//	error = zfsvfs_create(osname, vfs->vfs_readonly, &zfsvfs);
+//	if (error) {
+//		zfsvfs_vfs_free(vfs);
+//		goto out;
+//	}
+//
+//	if ((error = dsl_prop_get_integer(osname, "recordsize",
+//	    &recordsize, NULL))) {
+//		zfsvfs_vfs_free(vfs);
+//		goto out;
+//	}
+//
 //	vfs->vfs_data = zfsvfs;
 //	zfsvfs->z_vfs = vfs;
 //	zfsvfs->z_sb = sb;

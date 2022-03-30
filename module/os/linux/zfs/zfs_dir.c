@@ -466,7 +466,8 @@ zfs_unlinked_add(znode_t *zp, dmu_tx_t *tx)
 	VERIFY3U(0, ==,
 	    zap_add_int(zfsvfs->z_os, zfsvfs->z_unlinkedobj, zp->z_id, tx));
 
-	dataset_kstats_update_nunlinks_kstat(&zfsvfs->z_kstat, 1);
+// FIXME(hping)
+//	dataset_kstats_update_nunlinks_kstat(&zfsvfs->z_kstat, 1);
 }
 
 /*
@@ -763,7 +764,8 @@ zfs_rmnode(znode_t *zp)
 
 	mutex_exit(&os->os_dsl_dataset->ds_dir->dd_activity_lock);
 
-	dataset_kstats_update_nunlinked_kstat(&zfsvfs->z_kstat, 1);
+// FIXME(hping)
+//	dataset_kstats_update_nunlinked_kstat(&zfsvfs->z_kstat, 1);
 
 	zfs_znode_delete(zp, tx);
 

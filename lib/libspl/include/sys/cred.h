@@ -27,6 +27,8 @@
 #ifndef _LIBSPL_SYS_CRED_H
 #define	_LIBSPL_SYS_CRED_H
 
+#include_next <sys/cred.h>
+
 typedef struct cred cred_t;
 
 #endif
