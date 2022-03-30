@@ -43,6 +43,7 @@
 #include <sys/zfs_context.h>
 #include <sys/zfs_onexit.h>
 #include <sys/zfs_vfsops.h>
+#include <sys/zfs_znode.h>
 #include <sys/zstd/zstd.h>
 #include <sys/zvol.h>
 #include <zfs_fletcher.h>
@@ -1552,3 +1553,27 @@ struct timespec timespec_trunc(struct timespec t, unsigned gran)
     return t;
 }
 
+struct timespec current_kernel_time(void)
+{
+    struct timespec now;
+    return now;
+//    struct timekeeper *tk = &timekeeper;
+//    struct timespec64 now;
+//    unsigned long seq;
+//
+//    do {
+//        seq = read_seqcount_begin(&timekeeper_seq);
+//
+//        now = tk_xtime(tk);
+//    } while (read_seqcount_retry(&timekeeper_seq, seq));
+//
+//    return timespec64_to_timespec(now);
+}
+
+#if !defined(HAVE_CURRENT_TIME)
+extern struct timespec
+current_time(struct inode *ip)
+{
+    return (timespec_trunc(current_kernel_time(), ip->i_sb->s_time_gran));
+}
+#endif

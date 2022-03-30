@@ -44,6 +44,16 @@ extern "C" {
 #endif
 
 #ifndef _KERNEL
+
+typedef unsigned int __u32;
+struct inode_operations;
+struct file_operations;
+
+struct super_block {
+	void 			*s_fs_info;	/* Filesystem private info */
+	unsigned int    s_time_gran;
+};
+
 /*
  * Keep mostly read-only and often accessed (especially for
  * the RCU path lookup and 'stat' data) fields at the beginning
@@ -61,7 +71,7 @@ struct inode {
 //	struct posix_acl	*i_default_acl;
 //#endif
 
-//	const struct inode_operations	*i_op;
+	const struct inode_operations	*i_op;
 	struct super_block	*i_sb;
 //	struct address_space	*i_mapping;
 
@@ -88,8 +98,8 @@ struct inode {
 	struct timespec		i_mtime;
 	struct timespec		i_ctime;
 //	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
-//	unsigned short          i_bytes;
-//	unsigned int		i_blkbits;
+	unsigned short          i_bytes;
+	unsigned int		i_blkbits;
 //#if defined(CONFIG_IMA) && (defined(CONFIG_PPC64) || defined(CONFIG_S390))
 //	/* 4 bytes hole available on both required architectures */
 //	RH_KABI_FILL_HOLE(atomic_t		i_readcount)
@@ -119,7 +129,7 @@ struct inode {
 	atomic_t		i_count;
 	atomic_t		i_dio_count;
 	atomic_t		i_writecount;
-//	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
+	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
 //	struct file_lock	*i_flock;
 //	struct address_space	i_data;
 //#ifdef CONFIG_QUOTA
@@ -131,8 +141,7 @@ struct inode {
 //		struct block_device	*i_bdev;
 //		struct cdev		*i_cdev;
 //	};
-//
-//	__u32			i_generation;
+	__u32			i_generation;
 //
 //#ifdef CONFIG_FSNOTIFY
 //	__u32			i_fsnotify_mask; /* all events this inode cares about */
@@ -144,12 +153,6 @@ struct inode {
 //	atomic_t		i_readcount; /* struct files open RO */
 //#endif
 	void			*i_private; /* fs or device private pointer */
-};
-
-
-struct super_block {
-	void 			*s_fs_info;	/* Filesystem private info */
-	unsigned int    s_time_gran;
 };
 
 #endif

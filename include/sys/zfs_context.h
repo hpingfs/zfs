@@ -756,6 +756,18 @@ typedef unsigned int kuid_t;
 typedef unsigned int kgid_t;
 
 extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
+extern struct timespec current_kernel_time(void);
+
+/*
+ * 4.9 API change
+ *  Preferred interface to get the current FS time.
+ * */
+#if !defined(HAVE_CURRENT_TIME)
+extern struct timespec current_time(struct inode *ip);
+#endif
+
+#define S_IRWXUGO   (S_IRWXU|S_IRWXG|S_IRWXO)
+
 /*
  * Kernel modules
  */
