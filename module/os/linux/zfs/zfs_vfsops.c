@@ -767,9 +767,8 @@ zfsvfs_init(zfsvfs_t *zfsvfs, objset_t *os)
 	    &zfsvfs->z_attr_table);
 	if (error != 0)
 		return (error);
-// FIXME(hping) add kernel part of zfs_sa.c
-//	if (zfsvfs->z_version >= ZPL_VERSION_SA)
-//		sa_register_update_callback(os, zfs_sa_upgrade);
+	if (zfsvfs->z_version >= ZPL_VERSION_SA)
+		sa_register_update_callback(os, zfs_sa_upgrade);
 
 	return (0);
 }
@@ -2018,7 +2017,7 @@ zfs_set_version(zfsvfs_t *zfsvfs, uint64_t newvers)
 		ASSERT0(error);
 
 		VERIFY(0 == sa_set_sa_object(os, sa_obj));
-//		sa_register_update_callback(os, zfs_sa_upgrade);
+		sa_register_update_callback(os, zfs_sa_upgrade);
 	}
 
 	spa_history_log_internal_ds(dmu_objset_ds(os), "upgrade", tx,

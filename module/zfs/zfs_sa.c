@@ -69,7 +69,6 @@ const sa_attr_reg_t zfs_attr_table[ZPL_END+1] = {
 	{NULL, 0, 0, 0}
 };
 
-#ifdef _KERNEL
 int
 zfs_sa_readlink(znode_t *zp, zfs_uio_t *uio)
 {
@@ -433,6 +432,7 @@ zfs_sa_upgrade_txholds(dmu_tx_t *tx, znode_t *zp)
 	}
 }
 
+#ifdef _KERNEL
 EXPORT_SYMBOL(zfs_attr_table);
 EXPORT_SYMBOL(zfs_sa_readlink);
 EXPORT_SYMBOL(zfs_sa_symlink);
