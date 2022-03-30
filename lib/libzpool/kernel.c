@@ -894,19 +894,19 @@ zfs_secpolicy_destroy_perms(const char *name, cred_t *cr)
 	return (0);
 }
 
-int
-secpolicy_zfs(const cred_t *cr)
-{
-	(void) cr;
-	return (0);
-}
-
-int
-secpolicy_zfs_proc(const cred_t *cr, proc_t *proc)
-{
-	(void) cr, (void) proc;
-	return (0);
-}
+//int
+//secpolicy_zfs(const cred_t *cr)
+//{
+//	(void) cr;
+//	return (0);
+//}
+//
+//int
+//secpolicy_zfs_proc(const cred_t *cr, proc_t *proc)
+//{
+//	(void) cr, (void) proc;
+//	return (0);
+//}
 
 ksiddomain_t *
 ksid_lookupdomain(const char *dom)
@@ -1634,6 +1634,23 @@ int groupmember(gid_t gid, const cred_t *cr) {
     return 0;
 }
 
+/* Return the filesystem user id */
+uid_t
+crgetfsuid(const cred_t *cr)
+{
+    return 0;
+//	return (KUID_TO_SUID(cr->fsuid));
+}
+
+/* Return the filesystem group id */
+gid_t
+crgetfsgid(const cred_t *cr)
+{
+    return 0;
+//	return (KGID_TO_SGID(cr->fsgid));
+}
+
+
 /**
  * shrink_dcache_sb - shrink dcache for a superblock
  * @sb: superblock
@@ -1719,4 +1736,59 @@ void remove_inode_hash(struct inode *inode)
 //    hlist_del_init(&inode->i_hash);
 //    spin_unlock(&inode->i_lock);
 //    spin_unlock(&inode_hash_lock);
+}
+
+/**
+ * inode_owner_or_capable - check current task permissions to inode
+ * @inode: inode being checked
+ *
+ * Return true if current either has CAP_FOWNER in a namespace with the
+ * inode owner uid mapped, or owns the file.
+ */
+boolean_t
+inode_owner_or_capable(const struct inode *inode)
+{
+//    struct user_namespace *ns;
+//
+//    if (uid_eq(current_fsuid(), inode->i_uid))
+//        return true;
+//
+//    ns = current_user_ns();
+//    if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
+//        return true;
+    return B_FALSE;
+}
+
+/**
+ * has_capability - Does a task have a capability in init_user_ns
+ * @t: The task in question
+ * @cap: The capability to be tested for
+ *
+ * Return true if the specified task has the given superior capability
+ * currently in effect to the initial user namespace, false if not.
+ *
+ * Note that this does not set PF_SUPERPRIV on the task.
+ */
+boolean_t
+has_capability(struct task_struct *t, int cap)
+{
+    return B_FALSE;
+//    return has_ns_capability(t, &init_user_ns, cap);
+}
+
+/**
+ * capable - Determine if the current task has a superior capability in effect
+ * @cap: The capability to be tested for
+ *
+ * Return true if the current task has the given superior capability currently
+ * available for use, false if not.
+ *
+ * This sets PF_SUPERPRIV on the task if the capability is available on the
+ * assumption that it's about to be used.
+ */
+boolean_t
+capable(int cap)
+{
+    return B_FALSE;
+//    return ns_capable(&init_user_ns, cap);
 }

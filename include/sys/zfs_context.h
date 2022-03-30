@@ -921,6 +921,15 @@ struct cred {
 
 #define zfs_uio_fault_disable(u, set)
 
+#if defined(HAVE_INODE_OWNER_OR_CAPABLE)
+#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ip)
+#elif defined(HAVE_INODE_OWNER_OR_CAPABLE_IDMAPPED)
+#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ns, ip)
+#else
+#error "Unsupported kernel"
+#endif
+
+
 /*
  * Kernel modules
  */
