@@ -35,9 +35,9 @@
 #include <sys/spa.h>
 #include <sys/zfs_stat.h>
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 #include <sys/nvpair.h>
-#endif	/* _KERNEL */
+//#endif	/* _KERNEL */
 
 #ifdef	__cplusplus
 extern "C" {
@@ -528,7 +528,7 @@ typedef struct zfs_useracct {
 
 #define	ZPOOL_EXPORT_AFTER_SPLIT 0x1
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 struct objset;
 struct zfsvfs;
 
@@ -571,7 +571,7 @@ extern int zfsdev_getminor(zfs_file_t *fp, minor_t *minorp);
 extern uint_t zfs_fsyncer_key;
 extern uint_t zfs_allow_log_key;
 
-#endif	/* _KERNEL */
+//#endif	/* _KERNEL */
 
 #ifdef	__cplusplus
 }

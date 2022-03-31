@@ -3351,7 +3351,8 @@ zfs_ioc_create(const char *fsname, nvlist_t *innvl, nvlist_t *outnvl)
 		break;
 
 	case DMU_OST_ZVOL:
-		cbfunc = zvol_create_cb;
+// FIXME(hping)
+//		cbfunc = zvol_create_cb;
 		break;
 
 	default:
@@ -7544,7 +7545,8 @@ zfsdev_state_init(void *priv)
 
 	zfsdev_private_set_state(priv, zs);
 
-	zfs_onexit_init((zfs_onexit_t **)&zs->zs_onexit);
+// FIXME(hping)
+//	zfs_onexit_init((zfs_onexit_t **)&zs->zs_onexit);
 	zfs_zevent_init((zfs_zevent_t **)&zs->zs_zevent);
 
 	/*
