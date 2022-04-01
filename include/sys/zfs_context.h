@@ -772,6 +772,8 @@ extern int kmem_cache_reap_active(void);
 #include <sys/uzfs.h>
 #include <sys/kernel.h>
 
+extern long zfsdev_ioctl(unsigned cmd, unsigned long arg);
+
 /*
  * Kernel modules
  */

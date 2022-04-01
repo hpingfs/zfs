@@ -48,6 +48,14 @@
 #include <zfs_fletcher.h>
 #include <zlib.h>
 
-int ddi_copyin(const void *from, void *to, size_t len, int flags) { return 0; }
-int ddi_copyout(const void *from, void *to, size_t len, int flags) { return 0; }
+int ddi_copyin(const void *from, void *to, size_t len, int flags)
+{
+    memcpy(to, from, len);
+    return 0;
+}
+int ddi_copyout(const void *from, void *to, size_t len, int flags)
+{
+    memcpy(to, from, len);
+    return 0;
+}
 
