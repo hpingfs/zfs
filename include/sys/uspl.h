@@ -2,9 +2,8 @@
  * CDDL HEADER START
  *
  * The contents of this file are subject to the terms of the
- * Common Development and Distribution License, Version 1.0 only
- * (the "License").  You may not use this file except in compliance
- * with the License.
+ * Common Development and Distribution License (the "License").
+ * You may not use this file except in compliance with the License.
  *
  * You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
  * or http://www.opensolaris.org/os/licensing.
@@ -19,14 +18,24 @@
  *
  * CDDL HEADER END
  */
-/*
- * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
- */
 
-#ifndef _LIBSPL_SYS_CRED_H
-#define	_LIBSPL_SYS_CRED_H
+#ifndef	_SYS_USPL_H
+#define	_SYS_USPL_H
 
-typedef struct cred cred_t;
+// vmsystm.h
+unsigned long totalram_pages;
+#define zfs_totalram_pages  totalram_pages
 
-#endif
+// sysmacros.h
+#define is_system_labeled()     0
+
+// cred.h
+#define	KUID_TO_SUID(x)		(__kuid_val(x))
+#define	KGID_TO_SGID(x)		(__kgid_val(x))
+#define	SUID_TO_KUID(x)		(KUIDT_INIT(x))
+#define	SGID_TO_KGID(x)		(KGIDT_INIT(x))
+#define	KGIDP_TO_SGIDP(x)	(&(x)->val)
+
+
+
+#endif	/* _SYS_USPL_H */

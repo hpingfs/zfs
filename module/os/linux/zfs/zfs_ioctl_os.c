@@ -62,8 +62,11 @@
 #include <sys/zfs_ioctl_impl.h>
 
 #include <sys/zfs_sysfs.h>
+
+#ifdef _KERNEL
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
+#endif
 
 boolean_t
 zfs_vfs_held(zfsvfs_t *zfsvfs)
@@ -87,20 +90,41 @@ zfs_vfs_rele(zfsvfs_t *zfsvfs)
 	deactivate_super(zfsvfs->z_sb);
 }
 
-void
-zfsdev_private_set_state(void *priv, zfsdev_state_t *zs)
+uint64_t
+zfs_max_nvlist_src_size_os(void)
 {
-	struct file *filp = priv;
+	if (zfs_max_nvlist_src_size != 0)
+		return (zfs_max_nvlist_src_size);
 
-	filp->private_data = zs;
+	return (MIN(ptob(zfs_totalram_pages) / 4, 128 * 1024 * 1024));
 }
 
+/* Update the VFS's cache of mountpoint properties */
+void
+zfs_ioctl_update_mount_cache(const char *dsname)
+{
+}
+
+void
+zfs_ioctl_init_os(void)
+{
+}
+
+#if defined(_KERNEL)
 zfsdev_state_t *
 zfsdev_private_get_state(void *priv)
 {
 	struct file *filp = priv;
 
 	return (filp->private_data);
+}
+
+void
+zfsdev_private_set_state(void *priv, zfsdev_state_t *zs)
+{
+	struct file *filp = priv;
+
+	filp->private_data = zs;
 }
 
 static int
@@ -146,26 +170,6 @@ out:
 	kmem_free(zc, sizeof (zfs_cmd_t));
 	return (error);
 
-}
-
-uint64_t
-zfs_max_nvlist_src_size_os(void)
-{
-	if (zfs_max_nvlist_src_size != 0)
-		return (zfs_max_nvlist_src_size);
-
-	return (MIN(ptob(zfs_totalram_pages) / 4, 128 * 1024 * 1024));
-}
-
-/* Update the VFS's cache of mountpoint properties */
-void
-zfs_ioctl_update_mount_cache(const char *dsname)
-{
-}
-
-void
-zfs_ioctl_init_os(void)
-{
 }
 
 #ifdef CONFIG_COMPAT
@@ -269,12 +273,11 @@ openzfs_fini(void)
 	    ZFS_META_VERSION, ZFS_META_RELEASE, ZFS_DEBUG_STR);
 }
 
-#if defined(_KERNEL)
 module_init(openzfs_init);
 module_exit(openzfs_fini);
-#endif
 
 ZFS_MODULE_DESCRIPTION("ZFS");
 ZFS_MODULE_AUTHOR(ZFS_META_AUTHOR);
 ZFS_MODULE_LICENSE(ZFS_META_LICENSE);
 ZFS_MODULE_VERSION(ZFS_META_VERSION "-" ZFS_META_RELEASE);
+#endif

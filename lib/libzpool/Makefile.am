@@ -190,7 +190,10 @@ KERNEL_C = \
 	zfs_vnops.c \
 	zfs_vnops_os.c \
 	policy.c \
-	zfs_ioctl.c
+	zfs_ioctl.c \
+	zfs_ioctl_os.c \
+	uzfs.c \
+	uspl.c
 
 LUA_C = \
 	lapi.c \

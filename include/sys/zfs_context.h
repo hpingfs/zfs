@@ -123,6 +123,9 @@ extern "C" {
 
 #include <sys/zfs_context_os.h>
 
+#include <sys/uspl.h>
+#include <sys/uzfs.h>
+
 /*
  * Stack
  */
@@ -794,6 +797,7 @@ typedef struct {
 } atomic_t;
 
 extern int atomic_read(const atomic_t *v);
+#define atomic_inc_not_zero(v)      atomic_add_unless((v), 1, 0)
 
 typedef	int	umode_t;
 
@@ -946,6 +950,13 @@ struct cred {
 
 #define task_io_account_read(n)
 #define task_io_account_write(n)
+
+// hping start
+#define register_filesystem(f)
+#define unregister_filesystem(f)
+
+#define deactivate_super(s)
+
 /*
  * Kernel modules
  */

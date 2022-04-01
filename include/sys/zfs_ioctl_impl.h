@@ -88,6 +88,10 @@ boolean_t zfs_vfs_held(zfsvfs_t *);
 int zfs_vfs_ref(zfsvfs_t **);
 void zfs_vfs_rele(zfsvfs_t *);
 
+int zfs_kmod_init(void);
+void zfs_kmod_fini(void);
+
+#ifdef _KERNEL
 long zfsdev_ioctl_common(uint_t, zfs_cmd_t *, int);
 int zfsdev_attach(void);
 void zfsdev_detach(void);
@@ -95,7 +99,6 @@ void zfsdev_private_set_state(void *, zfsdev_state_t *);
 zfsdev_state_t *zfsdev_private_get_state(void *);
 int zfsdev_state_init(void *);
 void zfsdev_state_destroy(void *);
-int zfs_kmod_init(void);
-void zfs_kmod_fini(void);
+#endif
 
 #endif

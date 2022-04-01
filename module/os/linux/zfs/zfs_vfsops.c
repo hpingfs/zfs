@@ -2159,9 +2159,9 @@ zfs_init(void)
 	zfsctl_init();
 	zfs_znode_init();
 	dmu_objset_register_type(DMU_OST_ZFS, zpl_get_file_info);
-//	register_filesystem(&zpl_fs_type);
+	register_filesystem(&zpl_fs_type);
 }
-//
+
 void
 zfs_fini(void)
 {
@@ -2170,7 +2170,7 @@ zfs_fini(void)
 	 */
 	taskq_wait(system_delay_taskq);
 	taskq_wait(system_taskq);
-//	unregister_filesystem(&zpl_fs_type);
+	unregister_filesystem(&zpl_fs_type);
 	zfs_znode_fini();
 	zfsctl_fini();
 }

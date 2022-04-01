@@ -528,7 +528,6 @@ typedef struct zfs_useracct {
 
 #define	ZPOOL_EXPORT_AFTER_SPLIT 0x1
 
-//#ifdef _KERNEL
 struct objset;
 struct zfsvfs;
 
@@ -545,6 +544,10 @@ extern void zfs_destroy_unmount_origin(const char *);
 extern int getzfsvfs_impl(struct objset *, struct zfsvfs **);
 extern int getzfsvfs(const char *, struct zfsvfs **);
 
+extern uint_t zfs_fsyncer_key;
+extern uint_t zfs_allow_log_key;
+
+#ifdef _KERNEL
 enum zfsdev_state_type {
 	ZST_ONEXIT,
 	ZST_ZEVENT,
@@ -568,10 +571,7 @@ typedef struct zfsdev_state {
 extern void *zfsdev_get_state(minor_t minor, enum zfsdev_state_type which);
 extern int zfsdev_getminor(zfs_file_t *fp, minor_t *minorp);
 
-extern uint_t zfs_fsyncer_key;
-extern uint_t zfs_allow_log_key;
-
-//#endif	/* _KERNEL */
+#endif	/* _KERNEL */
 
 #ifdef	__cplusplus
 }
