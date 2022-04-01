@@ -193,7 +193,8 @@ KERNEL_C = \
 	zfs_ioctl.c \
 	zfs_ioctl_os.c \
 	uzfs.c \
-	uspl.c
+	uspl.c \
+	dataset_kstats.c
 
 LUA_C = \
 	lapi.c \

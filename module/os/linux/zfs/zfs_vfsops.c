@@ -62,10 +62,10 @@
 
 #ifdef _KERNEL
 
-//#include <sys/atomic.h>
-//#include <sys/kmem.h>
-//#include <sys/zpl.h>
-//#include <linux/vfs_compat.h>
+#include <sys/atomic.h>
+#include <sys/kmem.h>
+#include <sys/zpl.h>
+#include <linux/vfs_compat.h>
 
 enum {
 	TOKEN_RO,
@@ -960,8 +960,7 @@ zfsvfs_free(zfsvfs_t *zfsvfs)
 	vmem_free(zfsvfs->z_hold_trees, sizeof (avl_tree_t) * size);
 	vmem_free(zfsvfs->z_hold_locks, sizeof (kmutex_t) * size);
 	zfsvfs_vfs_free(zfsvfs->z_vfs);
-// FIXME(hping)
-//	dataset_kstats_destroy(&zfsvfs->z_kstat);
+	dataset_kstats_destroy(&zfsvfs->z_kstat);
 	kmem_free(zfsvfs, sizeof (zfsvfs_t));
 }
 
@@ -1468,92 +1467,91 @@ zfs_domount(struct super_block *sb, zfs_mnt_t *zm, int silent)
 	ASSERT(zm);
 	ASSERT(osname);
 
-// FIXME(hping)
-//	error = zfsvfs_parse_options(zm->mnt_data, &vfs);
-//	if (error)
-//		return (error);
-//
-//	error = zfsvfs_create(osname, vfs->vfs_readonly, &zfsvfs);
-//	if (error) {
-//		zfsvfs_vfs_free(vfs);
-//		goto out;
-//	}
-//
-//	if ((error = dsl_prop_get_integer(osname, "recordsize",
-//	    &recordsize, NULL))) {
-//		zfsvfs_vfs_free(vfs);
-//		goto out;
-//	}
-//
-//	vfs->vfs_data = zfsvfs;
-//	zfsvfs->z_vfs = vfs;
-//	zfsvfs->z_sb = sb;
-//	sb->s_fs_info = zfsvfs;
-//	sb->s_magic = ZFS_SUPER_MAGIC;
-//	sb->s_maxbytes = MAX_LFS_FILESIZE;
-//	sb->s_time_gran = 1;
-//	sb->s_blocksize = recordsize;
-//	sb->s_blocksize_bits = ilog2(recordsize);
-//
-//	error = -zpl_bdi_setup(sb, "zfs");
-//	if (error)
-//		goto out;
-//
-//	sb->s_bdi->ra_pages = 0;
-//
-//	/* Set callback operations for the file system. */
-//	sb->s_op = &zpl_super_operations;
-//	sb->s_xattr = zpl_xattr_handlers;
-//	sb->s_export_op = &zpl_export_operations;
-//	sb->s_d_op = &zpl_dentry_operations;
-//
-//	/* Set features for file system. */
-//	zfs_set_fuid_feature(zfsvfs);
-//
-//	if (dmu_objset_is_snapshot(zfsvfs->z_os)) {
-//		uint64_t pval;
-//
-//		atime_changed_cb(zfsvfs, B_FALSE);
-//		readonly_changed_cb(zfsvfs, B_TRUE);
-//		if ((error = dsl_prop_get_integer(osname,
-//		    "xattr", &pval, NULL)))
-//			goto out;
-//		xattr_changed_cb(zfsvfs, pval);
-//		if ((error = dsl_prop_get_integer(osname,
-//		    "acltype", &pval, NULL)))
-//			goto out;
-//		acltype_changed_cb(zfsvfs, pval);
-//		zfsvfs->z_issnap = B_TRUE;
-//		zfsvfs->z_os->os_sync = ZFS_SYNC_DISABLED;
-//		zfsvfs->z_snap_defer_time = jiffies;
-//
-//		mutex_enter(&zfsvfs->z_os->os_user_ptr_lock);
-//		dmu_objset_set_user(zfsvfs->z_os, zfsvfs);
-//		mutex_exit(&zfsvfs->z_os->os_user_ptr_lock);
-//	} else {
-//		if ((error = zfsvfs_setup(zfsvfs, B_TRUE)))
-//			goto out;
-//	}
-//
-//	/* Allocate a root inode for the filesystem. */
-//	error = zfs_root(zfsvfs, &root_inode);
-//	if (error) {
-//		(void) zfs_umount(sb);
-//		goto out;
-//	}
-//
-//	/* Allocate a root dentry for the filesystem */
-//	sb->s_root = d_make_root(root_inode);
-//	if (sb->s_root == NULL) {
-//		(void) zfs_umount(sb);
-//		error = SET_ERROR(ENOMEM);
-//		goto out;
-//	}
-//
-//	if (!zfsvfs->z_issnap)
-//		zfsctl_create(zfsvfs);
-//
-//	zfsvfs->z_arc_prune = arc_add_prune_callback(zpl_prune_sb, sb);
+	error = zfsvfs_parse_options(zm->mnt_data, &vfs);
+	if (error)
+		return (error);
+
+	error = zfsvfs_create(osname, vfs->vfs_readonly, &zfsvfs);
+	if (error) {
+		zfsvfs_vfs_free(vfs);
+		goto out;
+	}
+
+	if ((error = dsl_prop_get_integer(osname, "recordsize",
+	    &recordsize, NULL))) {
+		zfsvfs_vfs_free(vfs);
+		goto out;
+	}
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+	zfsvfs->z_sb = sb;
+	sb->s_fs_info = zfsvfs;
+	sb->s_magic = ZFS_SUPER_MAGIC;
+	sb->s_maxbytes = MAX_LFS_FILESIZE;
+	sb->s_time_gran = 1;
+	sb->s_blocksize = recordsize;
+	sb->s_blocksize_bits = ilog2(recordsize);
+
+	error = -zpl_bdi_setup(sb, "zfs");
+	if (error)
+		goto out;
+
+	sb->s_bdi->ra_pages = 0;
+
+	/* Set callback operations for the file system. */
+	sb->s_op = &zpl_super_operations;
+	sb->s_xattr = zpl_xattr_handlers;
+	sb->s_export_op = &zpl_export_operations;
+	sb->s_d_op = &zpl_dentry_operations;
+
+	/* Set features for file system. */
+	zfs_set_fuid_feature(zfsvfs);
+
+	if (dmu_objset_is_snapshot(zfsvfs->z_os)) {
+		uint64_t pval;
+
+		atime_changed_cb(zfsvfs, B_FALSE);
+		readonly_changed_cb(zfsvfs, B_TRUE);
+		if ((error = dsl_prop_get_integer(osname,
+		    "xattr", &pval, NULL)))
+			goto out;
+		xattr_changed_cb(zfsvfs, pval);
+		if ((error = dsl_prop_get_integer(osname,
+		    "acltype", &pval, NULL)))
+			goto out;
+		acltype_changed_cb(zfsvfs, pval);
+		zfsvfs->z_issnap = B_TRUE;
+		zfsvfs->z_os->os_sync = ZFS_SYNC_DISABLED;
+		zfsvfs->z_snap_defer_time = jiffies;
+
+		mutex_enter(&zfsvfs->z_os->os_user_ptr_lock);
+		dmu_objset_set_user(zfsvfs->z_os, zfsvfs);
+		mutex_exit(&zfsvfs->z_os->os_user_ptr_lock);
+	} else {
+		if ((error = zfsvfs_setup(zfsvfs, B_TRUE)))
+			goto out;
+	}
+
+	/* Allocate a root inode for the filesystem. */
+	error = zfs_root(zfsvfs, &root_inode);
+	if (error) {
+		(void) zfs_umount(sb);
+		goto out;
+	}
+
+	/* Allocate a root dentry for the filesystem */
+	sb->s_root = d_make_root(root_inode);
+	if (sb->s_root == NULL) {
+		(void) zfs_umount(sb);
+		error = SET_ERROR(ENOMEM);
+		goto out;
+	}
+
+	if (!zfsvfs->z_issnap)
+		zfsctl_create(zfsvfs);
+
+	zfsvfs->z_arc_prune = arc_add_prune_callback(zpl_prune_sb, sb);
 out:
 	if (error) {
 		if (zfsvfs != NULL) {
@@ -1846,8 +1844,7 @@ zfs_resume_fs(zfsvfs_t *zfsvfs, dsl_dataset_t *ds)
 	VERIFY(zfsvfs_setup(zfsvfs, B_FALSE) == 0);
 
 	zfs_set_fuid_feature(zfsvfs);
-// FIXME(hping)
-//	zfsvfs->z_rollback_time = jiffies;
+	zfsvfs->z_rollback_time = jiffies;
 
 	/*
 	 * Attempt to re-establish all the active inodes with their
@@ -1957,14 +1954,13 @@ zfs_exit_fs(zfsvfs_t *zfsvfs)
 {
 	if (!zfsvfs->z_issnap)
 		return;
-// FIXME(hping)
-//	if (time_after(jiffies, zfsvfs->z_snap_defer_time +
-//	    MAX(zfs_expire_snapshot * HZ / 2, HZ))) {
-//		zfsvfs->z_snap_defer_time = jiffies;
-//		zfsctl_snapshot_unmount_delay(zfsvfs->z_os->os_spa,
-//		    dmu_objset_id(zfsvfs->z_os),
-//		    zfs_expire_snapshot);
-//	}
+	if (time_after(jiffies, zfsvfs->z_snap_defer_time +
+	    MAX(zfs_expire_snapshot * HZ / 2, HZ))) {
+		zfsvfs->z_snap_defer_time = jiffies;
+		zfsctl_snapshot_unmount_delay(zfsvfs->z_os->os_spa,
+		    dmu_objset_id(zfsvfs->z_os),
+		    zfs_expire_snapshot);
+	}
 }
 
 int

@@ -36,6 +36,42 @@ unsigned long totalram_pages;
 #define	SGID_TO_KGID(x)		(KGIDT_INIT(x))
 #define	KGIDP_TO_SGIDP(x)	(&(x)->val)
 
+// FIXME(hping)
+#define current (0)
 
+#define	mutex_owner(mp)		(((mp)->m_owner))
+#define	mutex_owned(mp)		pthread_equal((mp)->m_owner, pthread_self())
+#define	MUTEX_HELD(mp)		mutex_owned(mp)
+#define	MUTEX_NOT_HELD(mp)	(!MUTEX_HELD(mp))
+
+#define	xcopyin(from, to, size)		memcpy(to, from, size)
+#define	xcopyout(from, to, size)	memcpy(to, from, size)
+
+struct task_struct {};
+
+static inline boolean_t
+zfs_proc_is_caller(struct task_struct *t)
+{
+	return B_FALSE;
+}
+
+
+static __inline__ int
+copyinstr(const void *from, void *to, size_t len, size_t *done)
+{
+	if (len == 0)
+		return (-ENAMETOOLONG);
+
+	/* XXX: Should return ENAMETOOLONG if 'strlen(from) > len' */
+
+	memset(to, 0, len);
+	if (xcopyin(from, to, len - 1) == NULL) {
+		*done = 0;
+    } else {
+        *done = len - 1;
+    }
+
+	return (0);
+}
 
 #endif	/* _SYS_USPL_H */

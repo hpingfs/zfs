@@ -49,6 +49,8 @@
 #include <zfs_fletcher.h>
 #include <zlib.h>
 
+#include <math.h>
+
 /*
  * Emulation of kernel services in userland.
  */
@@ -1751,16 +1753,6 @@ int fls(int x)
     return r + 1;
 }
 
-void zpl_bdi_destroy(struct super_block *sb)
-{
-}
-
-int
-zfsvfs_parse_options(char *mntopts, vfs_t **vfsp)
-{
-    return 0;
-}
-
 /**
  *  __remove_inode_hash - remove an inode from the hash
  *  @inode: inode to unhash
@@ -1960,3 +1952,33 @@ void
 update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
 {
 }
+
+int ilog2(uint64_t n) { return (int)log2(n); }
+
+struct dentry *d_make_root(struct inode *root_inode) { return NULL; }
+
+long zfsdev_ioctl(unsigned cmd, unsigned long arg)
+{
+	uint_t vecnum;
+	zfs_cmd_t *zc;
+	int error, rc;
+
+	vecnum = cmd - ZFS_IOC_FIRST;
+
+	zc = kmem_zalloc(sizeof (zfs_cmd_t), KM_SLEEP);
+
+	if (ddi_copyin((void *)(uintptr_t)arg, zc, sizeof (zfs_cmd_t), 0)) {
+		error = -SET_ERROR(EFAULT);
+		goto out;
+	}
+	error = -zfsdev_ioctl_common(vecnum, zc, 0);
+	rc = ddi_copyout(zc, (void *)(uintptr_t)arg, sizeof (zfs_cmd_t), 0);
+	if (error == 0 && rc != 0)
+		error = -SET_ERROR(EFAULT);
+out:
+	kmem_free(zc, sizeof (zfs_cmd_t));
+	return (error);
+
+}
+
+void schedule() {};

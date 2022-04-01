@@ -102,7 +102,7 @@
  * ereport with information about the differences.
  */
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 /*
  * Duplicate ereport Detection
  *
@@ -984,13 +984,13 @@ annotate_ecksum(nvlist_t *ereport, zio_bad_cksum_t *info,
 	}
 	return (eip);
 }
-#else
-void
-zfs_ereport_clear(spa_t *spa, vdev_t *vd)
-{
-	(void) spa, (void) vd;
-}
-#endif
+//#else
+//void
+//zfs_ereport_clear(spa_t *spa, vdev_t *vd)
+//{
+//	(void) spa, (void) vd;
+//}
+//#endif
 
 /*
  * Make sure our event is still valid for the given zio/vdev/pool.  For example,
@@ -1413,7 +1413,6 @@ zfs_post_state_change(spa_t *spa, vdev_t *vd, uint64_t laststate)
 #endif
 }
 
-#ifdef _KERNEL
 void
 zfs_ereport_init(void)
 {
@@ -1507,6 +1506,7 @@ zfs_ereport_zvol_post(const char *subclass, const char *name,
 	fm_nvlist_destroy(aux, FM_NVA_FREE);
 }
 
+#ifdef _KERNEL
 EXPORT_SYMBOL(zfs_ereport_post);
 EXPORT_SYMBOL(zfs_ereport_is_valid);
 EXPORT_SYMBOL(zfs_ereport_post_checksum);

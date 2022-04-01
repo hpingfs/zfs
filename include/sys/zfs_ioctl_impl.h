@@ -90,9 +90,9 @@ void zfs_vfs_rele(zfsvfs_t *);
 
 int zfs_kmod_init(void);
 void zfs_kmod_fini(void);
+long zfsdev_ioctl_common(uint_t, zfs_cmd_t *, int);
 
 #ifdef _KERNEL
-long zfsdev_ioctl_common(uint_t, zfs_cmd_t *, int);
 int zfsdev_attach(void);
 void zfsdev_detach(void);
 void zfsdev_private_set_state(void *, zfsdev_state_t *);

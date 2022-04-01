@@ -63,10 +63,12 @@
 #include <sys/fm/protocol.h>
 #include <sys/kstat.h>
 #include <sys/zfs_context.h>
+#include <sys/zfs_ioctl.h>
+
 #ifdef _KERNEL
 #include <sys/atomic.h>
 #include <sys/condvar.h>
-#include <sys/zfs_ioctl.h>
+#endif /* _KERNEL */
 
 static int zfs_zevent_len_max = 512;
 
@@ -88,7 +90,6 @@ static uint64_t zevent_eid = 0;
 static kmutex_t zevent_lock;
 static list_t zevent_list;
 static kcondvar_t zevent_cv;
-#endif /* _KERNEL */
 
 
 /*
@@ -113,7 +114,7 @@ static struct erpt_kstat erpt_kstat_data = {
 
 kstat_t *fm_ksp;
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 
 static zevent_t *
 zfs_zevent_alloc(void)
@@ -157,9 +158,7 @@ zfs_zevent_drain(zevent_t *ev)
 	zfs_zevent_free(ev);
 }
 
-void
-zfs_zevent_drain_all(int *count)
-{
+void zfs_zevent_drain_all(int *count) {
 	zevent_t *ev;
 
 	mutex_enter(&zevent_lock);
@@ -271,9 +270,10 @@ zfs_zevent_track_duplicate(void)
 static int
 zfs_zevent_minor_to_state(minor_t minor, zfs_zevent_t **ze)
 {
-	*ze = zfsdev_get_state(minor, ZST_ZEVENT);
-	if (*ze == NULL)
-		return (SET_ERROR(EBADF));
+// FIXME(hping)
+//	*ze = zfsdev_get_state(minor, ZST_ZEVENT);
+//	if (*ze == NULL)
+//		return (SET_ERROR(EBADF));
 
 	return (0);
 }
@@ -285,14 +285,15 @@ zfs_zevent_fd_hold(int fd, minor_t *minorp, zfs_zevent_t **ze)
 	if (fp == NULL)
 		return (NULL);
 
-	int error = zfsdev_getminor(fp, minorp);
-	if (error == 0)
-		error = zfs_zevent_minor_to_state(*minorp, ze);
-
-	if (error) {
-		zfs_zevent_fd_rele(fp);
-		fp = NULL;
-	}
+// FIXME(hping)
+//	int error = zfsdev_getminor(fp, minorp);
+//	if (error == 0)
+//		error = zfs_zevent_minor_to_state(*minorp, ze);
+//
+//	if (error) {
+//		zfs_zevent_fd_rele(fp);
+//		fp = NULL;
+//	}
 
 	return (fp);
 }
@@ -381,15 +382,16 @@ zfs_zevent_wait(zfs_zevent_t *ze)
 		}
 
 		error = cv_wait_sig(&zevent_cv, &zevent_lock);
-		if (signal_pending(current)) {
-			error = SET_ERROR(EINTR);
-			break;
-		} else if (!list_is_empty(&zevent_list)) {
-			error = 0;
-			continue;
-		} else {
-			error = EAGAIN;
-		}
+// FIXME(hping)
+//		if (signal_pending(current)) {
+//			error = SET_ERROR(EINTR);
+//			break;
+//		} else if (!list_is_empty(&zevent_list)) {
+//			error = 0;
+//			continue;
+//		} else {
+//			error = EAGAIN;
+//		}
 	}
 
 	zevent_waiters--;
@@ -478,7 +480,7 @@ zfs_zevent_destroy(zfs_zevent_t *ze)
 
 	kmem_free(ze, sizeof (zfs_zevent_t));
 }
-#endif /* _KERNEL */
+//#endif /* _KERNEL */
 
 /*
  * Wrappers for FM nvlist allocators
@@ -1301,7 +1303,7 @@ fm_ena_time_get(uint64_t ena)
 	return (time);
 }
 
-#ifdef _KERNEL
+//#ifdef _KERNEL
 /*
  * Helper function to increment ereport dropped count.  Used by the event
  * rate limiting code to give feedback to the user about how many events were
@@ -1368,7 +1370,7 @@ fm_fini(void)
 		fm_ksp = NULL;
 	}
 }
-#endif /* _KERNEL */
+//#endif /* _KERNEL */
 
 ZFS_MODULE_PARAM(zfs_zevent, zfs_zevent_, len_max, INT, ZMOD_RW,
 	"Max event queue length");

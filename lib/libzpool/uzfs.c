@@ -52,14 +52,28 @@
 int zvol_init(void) {}
 void zvol_fini(void) {}
 
-void zfs_ioctl_init(void) {}
+//void zfs_zevent_drain_all(int *count) {}
+//zfs_file_t * zfs_zevent_fd_hold(int fd, minor_t *minorp, zfs_zevent_t **ze) { return NULL; }
 
-void zfs_ereport_taskq_fini(void) {}
+//void zfs_ereport_taskq_fini(void) {}
 
-void fm_init(void) {}
-void fm_fini(void) {}
+//void fm_init(void) {}
+//void fm_fini(void) {}
 
 int zvol_set_volsize(const char *name, uint64_t volsize) { return 0; }
 int zvol_set_snapdev(const char *ddname, zprop_source_t source, uint64_t snapdev) { return 0; }
 int zvol_set_volmode(const char *ddname, zprop_source_t source, uint64_t volmode) { return 0; }
 void zvol_create_cb(objset_t *os, void *arg, cred_t *cr, dmu_tx_t *tx) {}
+int zvol_get_stats(objset_t *os, nvlist_t *nv) { return 0; }
+zvol_state_handle_t *zvol_suspend(const char *name) { return NULL; }
+int zvol_resume(zvol_state_handle_t *zv) { return 0; }
+int zvol_check_volsize(uint64_t volsize, uint64_t blocksize) { return 0; }
+int zvol_check_volblocksize(const char *name, uint64_t volblocksize) { return 0; }
+
+int zpl_bdi_setup(struct super_block *sb, char *name) { return 0; };
+void zpl_bdi_destroy(struct super_block *sb) {}
+
+void zpl_prune_sb(int64_t nr_to_scan, void *arg) {};
+
+int zfsvfs_parse_options(char *mntopts, vfs_t **vfsp) { return 0; }
+

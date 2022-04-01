@@ -19,8 +19,26 @@
  * CDDL HEADER END
  */
 
-#ifndef	_SYS_USPL_H
-#define	_SYS_USPL_H
+#ifndef	_SYS_UZFS_H
+#define	_SYS_UZFS_H
 
+#include <sys/zfs_context.h>
 
-#endif	/* _SYS_USPL_H */
+#define zpl_super_operations uzfs_super_operations
+#define zpl_export_operations uzfs_export_operations
+#define zpl_dentry_operations uzfs_dentry_operations
+#define zpl_xattr_handlers uzfs_xattr_handlers
+
+extern void zpl_prune_sb(int64_t nr_to_scan, void *arg);
+
+#define zfs_uio_fault_disable(u, set)
+
+#if defined(HAVE_INODE_OWNER_OR_CAPABLE)
+#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ip)
+#elif defined(HAVE_INODE_OWNER_OR_CAPABLE_IDMAPPED)
+#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ns, ip)
+#else
+#error "Unsupported kernel"
+#endif
+
+#endif	/* _SYS_UZFS_H */

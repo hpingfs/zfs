@@ -123,9 +123,6 @@ extern "C" {
 
 #include <sys/zfs_context_os.h>
 
-#include <sys/uspl.h>
-#include <sys/uzfs.h>
-
 /*
  * Stack
  */
@@ -266,8 +263,6 @@ typedef struct kmutex {
 
 #define	MUTEX_DEFAULT		0
 #define	MUTEX_NOLOCKDEP		MUTEX_DEFAULT
-#define	MUTEX_HELD(mp)		pthread_equal((mp)->m_owner, pthread_self())
-#define	MUTEX_NOT_HELD(mp)	!MUTEX_HELD(mp)
 
 extern void mutex_init(kmutex_t *mp, char *name, int type, void *cookie);
 extern void mutex_destroy(kmutex_t *mp);
@@ -773,189 +768,9 @@ extern void spl_fstrans_unmark(fstrans_cookie_t);
 extern int __spl_pf_fstrans_check(void);
 extern int kmem_cache_reap_active(void);
 
-// FIXME(hping)
-extern struct inode *igrab(struct inode *inode);
-extern void iput(struct inode *inode);
-extern void drop_nlink(struct inode *inode);
-extern void clear_nlink(struct inode *inode);
-extern void set_nlink(struct inode *inode, unsigned int nlink);
-extern void inc_nlink(struct inode *inode);
-
-/**
- * container_of - cast a member of a structure out to the containing structure
- * @ptr:    the pointer to the member.
- * @type:   the type of the container struct this is embedded in.
- * @member: the name of the member within the struct.
- *
- */
-#define container_of(ptr, type, member) ({          \
-    const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-    (type *)( (char *)__mptr - offsetof(type,member) );})
-
-typedef struct {
-            int counter;
-} atomic_t;
-
-extern int atomic_read(const atomic_t *v);
-#define atomic_inc_not_zero(v)      atomic_add_unless((v), 1, 0)
-
-typedef	int	umode_t;
-
-typedef unsigned int kuid_t;
-typedef unsigned int kgid_t;
-
-
-#define KUIDT_INIT(value) ((kuid_t) value )
-#define KGIDT_INIT(value) ((kgid_t) value )
-
-static inline kuid_t __kuid_val(kuid_t uid)
-{
-    return uid;
-}
-
-static inline kgid_t __kgid_val(kgid_t gid)
-{
-    return gid;
-}
-
-extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
-extern struct timespec current_kernel_time(void);
-
-/*
- * 4.9 API change
- *  Preferred interface to get the current FS time.
- * */
-#if !defined(HAVE_CURRENT_TIME)
-extern struct timespec current_time(struct inode *ip);
-#endif
-
-#define S_IRWXUGO   (S_IRWXU|S_IRWXG|S_IRWXO)
-
-// FIXME(hping) from os/linux/kernel/linux/vfs_compat.h
-/*
- * 4.14 adds SB_* flag definitions, define them to MS_* equivalents
- * if not set.
- */
-#ifndef SB_RDONLY
-#define SB_RDONLY   MS_RDONLY
-#endif
-
-#ifndef SB_SILENT
-#define SB_SILENT   MS_SILENT
-#endif
-
-#ifndef SB_ACTIVE
-#define SB_ACTIVE   MS_ACTIVE
-#endif
-
-#ifndef SB_POSIXACL
-#define SB_POSIXACL MS_POSIXACL
-#endif
-
-#ifndef SB_MANDLOCK
-#define SB_MANDLOCK MS_MANDLOCK
-#endif
-
-#ifndef SB_NOATIME
-#define SB_NOATIME  MS_NOATIME
-#endif
-
-/*
- * Inode flags - they have no relation to superblock flags now
- */
-#define S_SYNC      1   /* Writes are synced at once */
-#define S_NOATIME   2   /* Do not update access times */
-#define S_APPEND    4   /* Append-only file */
-#define S_IMMUTABLE 8   /* Immutable file */
-#define S_DEAD      16  /* removed, but still open directory */
-#define S_NOQUOTA   32  /* Inode is not counted to quota */
-#define S_DIRSYNC   64  /* Directory modifications are synchronous */
-#define S_NOCMTIME  128 /* Do not update file c/mtime */
-#define S_SWAPFILE  256 /* Do not truncate: swapon got its bmaps */
-#define S_PRIVATE   512 /* Inode is fs-internal */
-#define S_IMA       1024    /* Inode has an associated IMA struct */
-#define S_AUTOMOUNT 2048    /* Automount/referral quasi-directory */
-#define S_NOSEC     4096    /* no suid or xattr security attributes */
-#define S_IOPS_WRAPPER  8192    /* i_op points to struct inode_operations_wrapper */
-
-#define printk(...) ((void) 0)
-
-#define mappedread(a,b,c) fake_mappedread(a,b,c)
-
-struct cred {
-//	atomic_t	usage;
-//#ifdef CONFIG_DEBUG_CREDENTIALS
-//	atomic_t	subscribers;	/* number of processes subscribed */
-//	void		*put_addr;
-//	unsigned	magic;
-//#define CRED_MAGIC	0x43736564
-//#define CRED_MAGIC_DEAD	0x44656144
-//#endif
-//	kuid_t		uid;		/* real UID of the task */
-//	kgid_t		gid;		/* real GID of the task */
-//	kuid_t		suid;		/* saved UID of the task */
-//	kgid_t		sgid;		/* saved GID of the task */
-//	kuid_t		euid;		/* effective UID of the task */
-//	kgid_t		egid;		/* effective GID of the task */
-//	kuid_t		fsuid;		/* UID for VFS ops */
-//	kgid_t		fsgid;		/* GID for VFS ops */
-//	unsigned	securebits;	/* SUID-less security management */
-//	kernel_cap_t	cap_inheritable; /* caps our children can inherit */
-//	kernel_cap_t	cap_permitted;	/* caps we're permitted */
-//	kernel_cap_t	cap_effective;	/* caps we can actually use */
-//	kernel_cap_t	cap_bset;	/* capability bounding set */
-//#ifdef CONFIG_KEYS
-//	unsigned char	jit_keyring;	/* default keyring to attach requested
-//					 * keys to */
-//	struct key __rcu *session_keyring; /* keyring inherited over fork */
-//	struct key	*process_keyring; /* keyring private to this process */
-//	struct key	*thread_keyring; /* keyring private to this thread */
-//	struct key	*request_key_auth; /* assumed request_key authority */
-//#endif
-//#ifdef CONFIG_SECURITY
-//	void		*security;	/* subjective LSM security */
-//#endif
-//	struct user_struct *user;	/* real user ID subscription */
-//	struct user_namespace *user_ns; /* user_ns the caps and keyrings are relative to. */
-//	struct group_info *group_info;	/* supplementary groups for euid/fsgid */
-//	struct rcu_head	rcu;		/* RCU deletion hook */
-//
-//	RH_KABI_EXTEND(kernel_cap_t cap_ambient)  /* Ambient capability set */
-};
-
-#define zfs_uio_fault_disable(u, set)
-
-#if defined(HAVE_INODE_OWNER_OR_CAPABLE)
-#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ip)
-#elif defined(HAVE_INODE_OWNER_OR_CAPABLE_IDMAPPED)
-#define zpl_inode_owner_or_capable(ns, ip)  inode_owner_or_capable(ns, ip)
-#else
-#error "Unsupported kernel"
-#endif
-
-#define make_kuid(ns, uid) KUIDT_INIT(uid)
-#define make_kgid(ns, gid) KGIDT_INIT(gid)
-
-#if defined(CONFIG_64BIT)
-#define	TIME_MAX			INT64_MAX
-#define	TIME_MIN			INT64_MIN
-#else
-#define	TIME_MAX			INT32_MAX
-#define	TIME_MIN			INT32_MIN
-#endif
-
-#define	TIMESPEC_OVERFLOW(ts)		\
-	((ts)->tv_sec < TIME_MIN || (ts)->tv_sec > TIME_MAX)
-
-
-#define task_io_account_read(n)
-#define task_io_account_write(n)
-
-// hping start
-#define register_filesystem(f)
-#define unregister_filesystem(f)
-
-#define deactivate_super(s)
+#include <sys/uspl.h>
+#include <sys/uzfs.h>
+#include <sys/kernel.h>
 
 /*
  * Kernel modules

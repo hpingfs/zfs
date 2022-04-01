@@ -7122,224 +7122,6 @@ pool_status_check(const char *name, zfs_ioc_namecheck_t type,
 	return (error);
 }
 
-int
-zfs_kmod_init(void)
-{
-	int error;
-
-	if ((error = zvol_init()) != 0)
-		return (error);
-
-	spa_init(SPA_MODE_READ | SPA_MODE_WRITE);
-	zfs_init();
-
-	zfs_ioctl_init();
-
-#ifdef _KERNEL
-	mutex_init(&zfsdev_state_lock, NULL, MUTEX_DEFAULT, NULL);
-	zfsdev_state_list = kmem_zalloc(sizeof (zfsdev_state_t), KM_SLEEP);
-	zfsdev_state_list->zs_minor = -1;
-
-	if ((error = zfsdev_attach()) != 0)
-		goto out;
-#endif
-
-	tsd_create(&zfs_fsyncer_key, NULL);
-	tsd_create(&rrw_tsd_key, rrw_tsd_destroy);
-	tsd_create(&zfs_allow_log_key, zfs_allow_log_destroy);
-
-	return (0);
-out:
-	zfs_fini();
-	spa_fini();
-	zvol_fini();
-
-	return (error);
-}
-
-void
-zfs_kmod_fini(void)
-{
-#ifdef _KERNEL
-	zfsdev_state_t *zs, *zsnext = NULL;
-
-	zfsdev_detach();
-
-	mutex_destroy(&zfsdev_state_lock);
-
-	for (zs = zfsdev_state_list; zs != NULL; zs = zsnext) {
-		zsnext = zs->zs_next;
-		if (zs->zs_onexit)
-			zfs_onexit_destroy(zs->zs_onexit);
-		if (zs->zs_zevent)
-			zfs_zevent_destroy(zs->zs_zevent);
-		kmem_free(zs, sizeof (zfsdev_state_t));
-	}
-#endif
-
-	zfs_ereport_taskq_fini();	/* run before zfs_fini() on Linux */
-	zfs_fini();
-	spa_fini();
-	zvol_fini();
-
-	tsd_destroy(&zfs_fsyncer_key);
-	tsd_destroy(&rrw_tsd_key);
-	tsd_destroy(&zfs_allow_log_key);
-}
-
-#ifdef _KERNEL
-
-static zfsdev_state_t *zfsdev_state_list;
-
-int
-zfsdev_getminor(zfs_file_t *fp, minor_t *minorp)
-{
-	zfsdev_state_t *zs, *fpd;
-
-	ASSERT(!MUTEX_HELD(&zfsdev_state_lock));
-
-	fpd = zfs_file_private(fp);
-	if (fpd == NULL)
-		return (SET_ERROR(EBADF));
-
-	mutex_enter(&zfsdev_state_lock);
-
-	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
-
-		if (zs->zs_minor == -1)
-			continue;
-
-		if (fpd == zs) {
-			*minorp = fpd->zs_minor;
-			mutex_exit(&zfsdev_state_lock);
-			return (0);
-		}
-	}
-
-	mutex_exit(&zfsdev_state_lock);
-
-	return (SET_ERROR(EBADF));
-}
-
-void *
-zfsdev_get_state(minor_t minor, enum zfsdev_state_type which)
-{
-	zfsdev_state_t *zs;
-
-	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
-		if (zs->zs_minor == minor) {
-			smp_rmb();
-			switch (which) {
-			case ZST_ONEXIT:
-				return (zs->zs_onexit);
-			case ZST_ZEVENT:
-				return (zs->zs_zevent);
-			case ZST_ALL:
-				return (zs);
-			}
-		}
-	}
-
-	return (NULL);
-}
-
-/*
- * Find a free minor number.  The zfsdev_state_list is expected to
- * be short since it is only a list of currently open file handles.
- */
-static minor_t
-zfsdev_minor_alloc(void)
-{
-	static minor_t last_minor = 0;
-	minor_t m;
-
-	ASSERT(MUTEX_HELD(&zfsdev_state_lock));
-
-	for (m = last_minor + 1; m != last_minor; m++) {
-		if (m > ZFSDEV_MAX_MINOR)
-			m = 1;
-		if (zfsdev_get_state(m, ZST_ALL) == NULL) {
-			last_minor = m;
-			return (m);
-		}
-	}
-
-	return (0);
-}
-
-int
-zfsdev_state_init(void *priv)
-{
-	zfsdev_state_t *zs, *zsprev = NULL;
-	minor_t minor;
-	boolean_t newzs = B_FALSE;
-
-	ASSERT(MUTEX_HELD(&zfsdev_state_lock));
-
-	minor = zfsdev_minor_alloc();
-	if (minor == 0)
-		return (SET_ERROR(ENXIO));
-
-	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
-		if (zs->zs_minor == -1)
-			break;
-		zsprev = zs;
-	}
-
-	if (!zs) {
-		zs = kmem_zalloc(sizeof (zfsdev_state_t), KM_SLEEP);
-		newzs = B_TRUE;
-	}
-
-	zfsdev_private_set_state(priv, zs);
-
-	zfs_onexit_init((zfs_onexit_t **)&zs->zs_onexit);
-	zfs_zevent_init((zfs_zevent_t **)&zs->zs_zevent);
-
-	/*
-	 * In order to provide for lock-free concurrent read access
-	 * to the minor list in zfsdev_get_state(), new entries
-	 * must be completely written before linking them into the
-	 * list whereas existing entries are already linked; the last
-	 * operation must be updating zs_minor (from -1 to the new
-	 * value).
-	 */
-	if (newzs) {
-		zs->zs_minor = minor;
-		membar_producer();
-		zsprev->zs_next = zs;
-	} else {
-		membar_producer();
-		zs->zs_minor = minor;
-	}
-
-	return (0);
-}
-
-void
-zfsdev_state_destroy(void *priv)
-{
-	zfsdev_state_t *zs = zfsdev_private_get_state(priv);
-
-	ASSERT(zs != NULL);
-	ASSERT3S(zs->zs_minor, >, 0);
-
-	/*
-	 * The last reference to this zfsdev file descriptor is being dropped.
-	 * We don't have to worry about lookup grabbing this state object, and
-	 * zfsdev_state_init() will not try to reuse this object until it is
-	 * invalidated by setting zs_minor to -1.  Invalidation must be done
-	 * last, with a memory barrier to ensure ordering.  This lets us avoid
-	 * taking the global zfsdev state lock around destruction.
-	 */
-	zfs_onexit_destroy(zs->zs_onexit);
-	zfs_zevent_destroy(zs->zs_zevent);
-	zs->zs_onexit = NULL;
-	zs->zs_zevent = NULL;
-	membar_producer();
-	zs->zs_minor = -1;
-}
-
 long
 zfsdev_ioctl_common(uint_t vecnum, zfs_cmd_t *zc, int flag)
 {
@@ -7869,6 +7651,225 @@ zfs_ioctl_init(void)
 	    zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
 
 	zfs_ioctl_init_os();
+}
+
+
+int
+zfs_kmod_init(void)
+{
+	int error;
+
+	if ((error = zvol_init()) != 0)
+		return (error);
+
+	spa_init(SPA_MODE_READ | SPA_MODE_WRITE);
+	zfs_init();
+
+	zfs_ioctl_init();
+
+#ifdef _KERNEL
+	mutex_init(&zfsdev_state_lock, NULL, MUTEX_DEFAULT, NULL);
+	zfsdev_state_list = kmem_zalloc(sizeof (zfsdev_state_t), KM_SLEEP);
+	zfsdev_state_list->zs_minor = -1;
+
+	if ((error = zfsdev_attach()) != 0)
+		goto out;
+#endif
+
+	tsd_create(&zfs_fsyncer_key, NULL);
+	tsd_create(&rrw_tsd_key, rrw_tsd_destroy);
+	tsd_create(&zfs_allow_log_key, zfs_allow_log_destroy);
+
+	return (0);
+out:
+	zfs_fini();
+	spa_fini();
+	zvol_fini();
+
+	return (error);
+}
+
+void
+zfs_kmod_fini(void)
+{
+#ifdef _KERNEL
+	zfsdev_state_t *zs, *zsnext = NULL;
+
+	zfsdev_detach();
+
+	mutex_destroy(&zfsdev_state_lock);
+
+	for (zs = zfsdev_state_list; zs != NULL; zs = zsnext) {
+		zsnext = zs->zs_next;
+		if (zs->zs_onexit)
+			zfs_onexit_destroy(zs->zs_onexit);
+		if (zs->zs_zevent)
+			zfs_zevent_destroy(zs->zs_zevent);
+		kmem_free(zs, sizeof (zfsdev_state_t));
+	}
+#endif
+
+	zfs_ereport_taskq_fini();	/* run before zfs_fini() on Linux */
+	zfs_fini();
+	spa_fini();
+	zvol_fini();
+
+	tsd_destroy(&zfs_fsyncer_key);
+	tsd_destroy(&rrw_tsd_key);
+	tsd_destroy(&zfs_allow_log_key);
+}
+
+#ifdef _KERNEL
+
+static zfsdev_state_t *zfsdev_state_list;
+
+int
+zfsdev_getminor(zfs_file_t *fp, minor_t *minorp)
+{
+	zfsdev_state_t *zs, *fpd;
+
+	ASSERT(!MUTEX_HELD(&zfsdev_state_lock));
+
+	fpd = zfs_file_private(fp);
+	if (fpd == NULL)
+		return (SET_ERROR(EBADF));
+
+	mutex_enter(&zfsdev_state_lock);
+
+	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
+
+		if (zs->zs_minor == -1)
+			continue;
+
+		if (fpd == zs) {
+			*minorp = fpd->zs_minor;
+			mutex_exit(&zfsdev_state_lock);
+			return (0);
+		}
+	}
+
+	mutex_exit(&zfsdev_state_lock);
+
+	return (SET_ERROR(EBADF));
+}
+
+void *
+zfsdev_get_state(minor_t minor, enum zfsdev_state_type which)
+{
+	zfsdev_state_t *zs;
+
+	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
+		if (zs->zs_minor == minor) {
+			smp_rmb();
+			switch (which) {
+			case ZST_ONEXIT:
+				return (zs->zs_onexit);
+			case ZST_ZEVENT:
+				return (zs->zs_zevent);
+			case ZST_ALL:
+				return (zs);
+			}
+		}
+	}
+
+	return (NULL);
+}
+
+/*
+ * Find a free minor number.  The zfsdev_state_list is expected to
+ * be short since it is only a list of currently open file handles.
+ */
+static minor_t
+zfsdev_minor_alloc(void)
+{
+	static minor_t last_minor = 0;
+	minor_t m;
+
+	ASSERT(MUTEX_HELD(&zfsdev_state_lock));
+
+	for (m = last_minor + 1; m != last_minor; m++) {
+		if (m > ZFSDEV_MAX_MINOR)
+			m = 1;
+		if (zfsdev_get_state(m, ZST_ALL) == NULL) {
+			last_minor = m;
+			return (m);
+		}
+	}
+
+	return (0);
+}
+
+int
+zfsdev_state_init(void *priv)
+{
+	zfsdev_state_t *zs, *zsprev = NULL;
+	minor_t minor;
+	boolean_t newzs = B_FALSE;
+
+	ASSERT(MUTEX_HELD(&zfsdev_state_lock));
+
+	minor = zfsdev_minor_alloc();
+	if (minor == 0)
+		return (SET_ERROR(ENXIO));
+
+	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
+		if (zs->zs_minor == -1)
+			break;
+		zsprev = zs;
+	}
+
+	if (!zs) {
+		zs = kmem_zalloc(sizeof (zfsdev_state_t), KM_SLEEP);
+		newzs = B_TRUE;
+	}
+
+	zfsdev_private_set_state(priv, zs);
+
+	zfs_onexit_init((zfs_onexit_t **)&zs->zs_onexit);
+	zfs_zevent_init((zfs_zevent_t **)&zs->zs_zevent);
+
+	/*
+	 * In order to provide for lock-free concurrent read access
+	 * to the minor list in zfsdev_get_state(), new entries
+	 * must be completely written before linking them into the
+	 * list whereas existing entries are already linked; the last
+	 * operation must be updating zs_minor (from -1 to the new
+	 * value).
+	 */
+	if (newzs) {
+		zs->zs_minor = minor;
+		membar_producer();
+		zsprev->zs_next = zs;
+	} else {
+		membar_producer();
+		zs->zs_minor = minor;
+	}
+
+	return (0);
+}
+
+void
+zfsdev_state_destroy(void *priv)
+{
+	zfsdev_state_t *zs = zfsdev_private_get_state(priv);
+
+	ASSERT(zs != NULL);
+	ASSERT3S(zs->zs_minor, >, 0);
+
+	/*
+	 * The last reference to this zfsdev file descriptor is being dropped.
+	 * We don't have to worry about lookup grabbing this state object, and
+	 * zfsdev_state_init() will not try to reuse this object until it is
+	 * invalidated by setting zs_minor to -1.  Invalidation must be done
+	 * last, with a memory barrier to ensure ordering.  This lets us avoid
+	 * taking the global zfsdev state lock around destruction.
+	 */
+	zfs_onexit_destroy(zs->zs_onexit);
+	zfs_zevent_destroy(zs->zs_zevent);
+	zs->zs_onexit = NULL;
+	zs->zs_zevent = NULL;
+	membar_producer();
+	zs->zs_minor = -1;
 }
 
 
