@@ -48,7 +48,14 @@
 int
 zfs_ioctl(libzfs_handle_t *hdl, int request, zfs_cmd_t *zc)
 {
-	return (ioctl(hdl->libzfs_fd, request, zc));
+    int rc = zfsdev_ioctl(request, zc);
+    //if (rc != 0) {
+    //    fprintf(stderr, "Failed to exec ioctl: 0x%x\n", request);
+    //} else {
+    //    fprintf(stderr, "Executed ioctl: 0x%x successfully\n", request);
+    //}
+    return rc;
+//	return (ioctl(hdl->libzfs_fd, request, zc));
 }
 
 const char *

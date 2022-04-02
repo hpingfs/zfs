@@ -1842,7 +1842,7 @@ has_capability(struct task_struct *t, int cap)
 boolean_t
 capable(int cap)
 {
-    return B_FALSE;
+    return B_TRUE;
 //    return ns_capable(&init_user_ns, cap);
 }
 
@@ -1981,4 +1981,6 @@ out:
 
 }
 
-void schedule() {};
+void schedule() {}
+
+void d_prune_aliases(struct inode *inode) {}

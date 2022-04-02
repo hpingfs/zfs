@@ -23,7 +23,8 @@
 #define	_SYS_USPL_H
 
 // vmsystm.h
-unsigned long totalram_pages;
+// FIXME(hping) should query kernel
+extern unsigned long totalram_pages;
 #define zfs_totalram_pages  totalram_pages
 
 // sysmacros.h
@@ -37,7 +38,7 @@ unsigned long totalram_pages;
 #define	KGIDP_TO_SGIDP(x)	(&(x)->val)
 
 // FIXME(hping)
-#define current (0)
+//#define current (0)
 
 #define	mutex_owner(mp)		(((mp)->m_owner))
 #define	mutex_owned(mp)		pthread_equal((mp)->m_owner, pthread_self())
@@ -65,10 +66,14 @@ copyinstr(const void *from, void *to, size_t len, size_t *done)
 	/* XXX: Should return ENAMETOOLONG if 'strlen(from) > len' */
 
 	memset(to, 0, len);
-	if (xcopyin(from, to, len - 1) == NULL) {
-		*done = 0;
+    if (xcopyin(from, to, len - 1) == NULL) {
+        if (done) {
+            *done = 0;
+        }
     } else {
-        *done = len - 1;
+        if (done) {
+            *done = len - 1;
+        }
     }
 
 	return (0);

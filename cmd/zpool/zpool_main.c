@@ -1785,15 +1785,17 @@ zpool_do_create(int argc, char **argv)
 		ret = 1;
 		if (zpool_create(g_zfs, poolname,
 		    nvroot, props, fsprops) == 0) {
-			zfs_handle_t *pool = zfs_open(g_zfs,
-			    tname ? tname : poolname, ZFS_TYPE_FILESYSTEM);
-			if (pool != NULL) {
-				if (zfs_mount(pool, NULL, 0) == 0) {
-					ret = zfs_shareall(pool);
-					zfs_commit_all_shares();
-				}
-				zfs_close(pool);
-			}
+            printf("Created zpool: %s successfully\n", poolname);
+            ret = 0;
+			//zfs_handle_t *pool = zfs_open(g_zfs,
+			//    tname ? tname : poolname, ZFS_TYPE_FILESYSTEM);
+			//if (pool != NULL) {
+			//	if (zfs_mount(pool, NULL, 0) == 0) {
+			//		ret = zfs_shareall(pool);
+			//		zfs_commit_all_shares();
+			//	}
+			//	zfs_close(pool);
+			//}
 		} else if (libzfs_errno(g_zfs) == EZFS_INVALIDNAME) {
 			(void) fprintf(stderr, gettext("pool name may have "
 			    "been omitted\n"));
@@ -1878,6 +1880,8 @@ zpool_do_destroy(int argc, char **argv)
 	log_history = B_FALSE;
 
 	ret = (zpool_destroy(zhp, history_str) != 0);
+
+    printf("Destroyed zpool: %s successfully\n", pool);
 
 	zpool_close(zhp);
 

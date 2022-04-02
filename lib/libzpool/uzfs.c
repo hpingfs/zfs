@@ -49,7 +49,7 @@
 #include <zfs_fletcher.h>
 #include <zlib.h>
 
-int zvol_init(void) {}
+int zvol_init(void) { return 0; }
 void zvol_fini(void) {}
 
 //void zfs_zevent_drain_all(int *count) {}

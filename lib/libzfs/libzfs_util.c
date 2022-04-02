@@ -1075,12 +1075,18 @@ libzfs_init(void)
 		ftbl[SPA_FEATURE_LARGE_BLOCKS].fi_zfs_mod_supported = B_FALSE;
 	}
 
+    if (zfs_kmod_init()) {
+        printf("Faidled to init kmod\n");
+        return ENXIO;
+    }
+
 	return (hdl);
 }
 
 void
 libzfs_fini(libzfs_handle_t *hdl)
 {
+    zfs_kmod_fini();
 	(void) close(hdl->libzfs_fd);
 	zpool_free_handles(hdl);
 	namespace_clear(hdl);

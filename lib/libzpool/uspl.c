@@ -48,6 +48,8 @@
 #include <zfs_fletcher.h>
 #include <zlib.h>
 
+unsigned long totalram_pages = 0x800000 ;
+
 int ddi_copyin(const void *from, void *to, size_t len, int flags)
 {
     memcpy(to, from, len);

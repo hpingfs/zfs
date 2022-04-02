@@ -7662,7 +7662,12 @@ zfs_kmod_init(void)
 	if ((error = zvol_init()) != 0)
 		return (error);
 
+#ifdef _KERNEL
 	spa_init(SPA_MODE_READ | SPA_MODE_WRITE);
+#else
+    kernel_init(SPA_MODE_READ | SPA_MODE_WRITE);
+#endif
+
 	zfs_init();
 
 	zfs_ioctl_init();
@@ -7683,7 +7688,12 @@ zfs_kmod_init(void)
 	return (0);
 out:
 	zfs_fini();
+#ifdef _KERNEL
 	spa_fini();
+#else
+    kernel_fini();
+#endif
+
 	zvol_fini();
 
 	return (error);
@@ -7711,7 +7721,11 @@ zfs_kmod_fini(void)
 
 	zfs_ereport_taskq_fini();	/* run before zfs_fini() on Linux */
 	zfs_fini();
+#ifdef _KERNEL
 	spa_fini();
+#else
+    kernel_fini();
+#endif
 	zvol_fini();
 
 	tsd_destroy(&zfs_fsyncer_key);
