@@ -26,5 +26,10 @@
 int
 lzc_ioctl_fd(int fd, unsigned long request, zfs_cmd_t *zc)
 {
+#ifdef _KERNEL
 	return (ioctl(fd, request, zc));
+#else
+    return zfsdev_ioctl(request, zc);
+#endif
 }
+

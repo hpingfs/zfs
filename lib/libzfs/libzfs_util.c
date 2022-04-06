@@ -1012,12 +1012,13 @@ libzfs_init(void)
 	int error;
 	char *env;
 
-	if ((error = libzfs_load_module()) != 0) {
-		errno = error;
+	if ((hdl = calloc(1, sizeof (libzfs_handle_t))) == NULL) {
 		return (NULL);
 	}
 
-	if ((hdl = calloc(1, sizeof (libzfs_handle_t))) == NULL) {
+#ifdef _KERNEL
+	if ((error = libzfs_load_module()) != 0) {
+		errno = error;
 		return (NULL);
 	}
 
@@ -1036,6 +1037,7 @@ libzfs_init(void)
 		free(hdl);
 		return (NULL);
 	}
+#endif
 
 	zfs_prop_init();
 	zpool_prop_init();
@@ -1051,7 +1053,9 @@ libzfs_init(void)
 		if ((error = zfs_nicestrtonum(hdl, env,
 		    &hdl->libzfs_max_nvlist))) {
 			errno = error;
+#ifdef _KERNEL
 			(void) close(hdl->libzfs_fd);
+#endif
 			free(hdl);
 			return (NULL);
 		}
@@ -1076,7 +1080,7 @@ libzfs_init(void)
 	}
 
     if (zfs_kmod_init()) {
-        printf("Faidled to init kmod\n");
+        printf("Failed to init kmod\n");
         return ENXIO;
     }
 
@@ -1087,7 +1091,9 @@ void
 libzfs_fini(libzfs_handle_t *hdl)
 {
     zfs_kmod_fini();
+#ifdef _KERNEL
 	(void) close(hdl->libzfs_fd);
+#endif
 	zpool_free_handles(hdl);
 	namespace_clear(hdl);
 	libzfs_mnttab_fini(hdl);

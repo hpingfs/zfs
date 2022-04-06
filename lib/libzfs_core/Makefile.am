@@ -31,7 +31,8 @@ libzfs_core_la_SOURCES = $(USER_C)
 
 libzfs_core_la_LIBADD = \
 	$(abs_top_builddir)/lib/libnvpair/libnvpair.la \
-	$(abs_top_builddir)/lib/libspl/libspl.la
+	$(abs_top_builddir)/lib/libspl/libspl.la \
+	$(abs_top_builddir)/lib/libzpool/libzpool.la
 
 libzfs_core_la_LIBADD += $(LTLIBINTL)
 
