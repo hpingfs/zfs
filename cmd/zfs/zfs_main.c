@@ -1827,24 +1827,24 @@ zfs_do_destroy(int argc, char **argv)
 		/*
 		 * Check for any dependents and/or clones.
 		 */
-		cb.cb_first = B_TRUE;
-		if (!cb.cb_doclones &&
-		    zfs_iter_dependents(zhp, B_TRUE, destroy_check_dependent,
-		    &cb) != 0) {
-			rv = 1;
-			goto out;
-		}
-
-		if (cb.cb_error) {
-			rv = 1;
-			goto out;
-		}
-		cb.cb_batchedsnaps = fnvlist_alloc();
-		if (zfs_iter_dependents(zhp, B_FALSE, destroy_callback,
-		    &cb) != 0) {
-			rv = 1;
-			goto out;
-		}
+//		cb.cb_first = B_TRUE;
+//		if (!cb.cb_doclones &&
+//		    zfs_iter_dependents(zhp, B_TRUE, destroy_check_dependent,
+//		    &cb) != 0) {
+//			rv = 1;
+//			goto out;
+//		}
+//
+//		if (cb.cb_error) {
+//			rv = 1;
+//			goto out;
+//		}
+//		cb.cb_batchedsnaps = fnvlist_alloc();
+//		if (zfs_iter_dependents(zhp, B_FALSE, destroy_callback,
+//		    &cb) != 0) {
+//			rv = 1;
+//			goto out;
+//		}
 
 		/*
 		 * Do the real thing.  The callback will close the
