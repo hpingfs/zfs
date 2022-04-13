@@ -381,7 +381,8 @@ zfs_zrele_async(znode_t *zp)
 	struct inode *ip = ZTOI(zp);
 	objset_t *os = ITOZSB(ip)->z_os;
 
-	ASSERT(atomic_read(&ip->i_count) > 0);
+// FIXME(hping)
+//	ASSERT(atomic_read(&ip->i_count) > 0);
 	ASSERT(os != NULL);
 
 	/*
@@ -711,8 +712,8 @@ top:
 		txtype = zfs_log_create_txtype(Z_FILE, vsecp, vap);
 		if (flag & FIGNORECASE)
 			txtype |= TX_CI;
-		zfs_log_create(zilog, tx, txtype, dzp, zp, name,
-		    vsecp, acl_ids.z_fuidp, vap);
+//		zfs_log_create(zilog, tx, txtype, dzp, zp, name,
+//		    vsecp, acl_ids.z_fuidp, vap);
 		zfs_acl_ids_free(&acl_ids);
 		dmu_tx_commit(tx);
 	} else {
@@ -1114,7 +1115,7 @@ top:
 	txtype = TX_REMOVE;
 	if (flags & FIGNORECASE)
 		txtype |= TX_CI;
-	zfs_log_remove(zilog, tx, txtype, dzp, name, obj, unlinked);
+//	zfs_log_remove(zilog, tx, txtype, dzp, name, obj, unlinked);
 
 	dmu_tx_commit(tx);
 out:
@@ -1690,6 +1691,162 @@ out:
 
     return error;
 }
+
+int zfs_create_root(char* fsname, char* filename) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+    vattr_t *vap = NULL;
+    znode_t *zp = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+    umode_t mode = S_IFREG;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+	vap = kmem_zalloc(sizeof (vattr_t), KM_SLEEP);
+	uzfs_vap_init(vap, root_inode, mode, NULL);
+
+    error = zfs_create(ITOZ(root_inode), filename, vap, 0, mode, &zp, NULL, 0, NULL);
+    if (error)
+        goto out;
+
+out:
+    if (zp) {
+        zfs_inactive(ZTOI(zp));
+        destroy_inode(ZTOI(zp));
+    }
+
+    if (root_inode) {
+        zfs_inactive(root_inode);
+        destroy_inode(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (vap)
+	    kmem_free(vap, sizeof (vattr_t));
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
+int zfs_remove_root(char* fsname, char* filename) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+    error = zfs_remove(ITOZ(root_inode), filename, NULL, 0);
+    if (error)
+        goto out;
+
+out:
+    if (root_inode) {
+        zfs_inactive(root_inode);
+        destroy_inode(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
 
 
 /*

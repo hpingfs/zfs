@@ -3549,7 +3549,7 @@ create_parents(libzfs_handle_t *hdl, char *target, int prefixlen)
 			continue;
 		}
 
-		if (zfs_create(hdl, target, ZFS_TYPE_FILESYSTEM,
+		if (libzfs_create(hdl, target, ZFS_TYPE_FILESYSTEM,
 		    NULL) != 0) {
 			opname = dgettext(TEXT_DOMAIN, "create");
 			goto ancestorerr;
@@ -3624,7 +3624,7 @@ zfs_create_ancestors(libzfs_handle_t *hdl, const char *path)
  * Create a new filesystem or volume.
  */
 int
-zfs_create(libzfs_handle_t *hdl, const char *path, zfs_type_t type,
+libzfs_create(libzfs_handle_t *hdl, const char *path, zfs_type_t type,
     nvlist_t *props)
 {
 	int ret;
@@ -5603,3 +5603,23 @@ int libzfs_rmdir_root(char* fsname, char* dirname) {
     ret = zfs_ioctl(NULL, ZFS_IOC_RMDIR_ROOT, &zc);
     return ret;
 }
+
+int libzfs_create_root(char* fsname, char* filename) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+	(void) strlcpy(zc.zc_value, filename, sizeof (zc.zc_value));
+    ret = zfs_ioctl(NULL, ZFS_IOC_CREATE_ROOT, &zc);
+    return ret;
+}
+
+int libzfs_remove_root(char* fsname, char* filename) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+	(void) strlcpy(zc.zc_value, filename, sizeof (zc.zc_value));
+    ret = zfs_ioctl(NULL, ZFS_IOC_REMOVE_ROOT, &zc);
+    return ret;
+}
+
+

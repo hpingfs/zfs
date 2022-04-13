@@ -124,6 +124,8 @@ static int zfs_do_wait(int argc, char **argv);
 static int zfs_do_ls(int argc, char **argv);
 static int zfs_do_mkdir(int argc, char **argv);
 static int zfs_do_rmdir(int argc, char **argv);
+static int zfs_do_touch(int argc, char **argv);
+static int zfs_do_rm(int argc, char **argv);
 
 #ifdef __FreeBSD__
 static int zfs_do_jail(int argc, char **argv);
@@ -190,6 +192,8 @@ typedef enum {
 	HELP_LS,
 	HELP_MKDIR,
 	HELP_RMDIR,
+	HELP_TOUCH,
+	HELP_RM,
 } zfs_help_t;
 
 typedef struct zfs_command {
@@ -258,6 +262,8 @@ static zfs_command_t command_table[] = {
 	{ "ls",	zfs_do_ls,		HELP_LS		},
 	{ "mkdir",	zfs_do_mkdir,		HELP_MKDIR		},
 	{ "rmdir",	zfs_do_rmdir,		HELP_RMDIR		},
+	{ "touch",	zfs_do_touch,		HELP_TOUCH		},
+	{ "rm",	zfs_do_rm,		HELP_RM		},
 
 #ifdef __FreeBSD__
 	{ "jail",	zfs_do_jail,		HELP_JAIL		},
@@ -429,6 +435,10 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tmkdir <filesystem> <dirname>\n"));
 	case HELP_RMDIR:
 		return (gettext("\trmdir <filesystem> <dirname>\n"));
+	case HELP_TOUCH:
+		return (gettext("\ttouch <filesystem> <filename>\n"));
+	case HELP_RM:
+		return (gettext("\trm <filesystem> <filename>\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -1306,7 +1316,7 @@ zfs_do_create(int argc, char **argv)
 	}
 
 	/* pass to libzfs */
-	if (zfs_create(g_zfs, argv[0], type, props) != 0)
+	if (libzfs_create(g_zfs, argv[0], type, props) != 0)
 		goto error;
 
 	if (log_history) {
@@ -8686,6 +8696,52 @@ zfs_do_rmdir(int argc, char **argv)
 
 	return (ret);
 }
+
+static int
+zfs_do_touch(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *filename = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("touch %s/%s\n", fsname, filename);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_create_root(fsname, filename);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
+
+
+static int
+zfs_do_rm(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *filename = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("rm %s/%s\n", fsname, filename);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_remove_root(fsname, filename);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
+
 
 /*
  * Display version message

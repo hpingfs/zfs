@@ -1439,9 +1439,11 @@ typedef enum zfs_ioc {
 	ZFS_IOC_VDEV_GET_PROPS,			/* 0x5a55 */
 	ZFS_IOC_VDEV_SET_PROPS,			/* 0x5a56 */
 
-	ZFS_IOC_LS_ROOT,				/* 0x5a57 */
-	ZFS_IOC_MKDIR_ROOT,				/* 0x5a58 */
-	ZFS_IOC_RMDIR_ROOT,				/* 0x5a59 */
+	ZFS_IOC_LS_ROOT,
+	ZFS_IOC_MKDIR_ROOT,
+	ZFS_IOC_RMDIR_ROOT,
+	ZFS_IOC_CREATE_ROOT,
+	ZFS_IOC_REMOVE_ROOT,
 
 	/*
 	 * Per-platform (Optional) - 8/128 numbers reserved.

@@ -547,6 +547,8 @@ _LIBZFS_H int zfs_wait_status(zfs_handle_t *, zfs_wait_activity_t,
 _LIBZFS_H int libzfs_ls_root(char* fsname);
 _LIBZFS_H int libzfs_mkdir_root(char* fsname, char* dirname);
 _LIBZFS_H int libzfs_rmdir_root(char* fsname, char* dirname);
+_LIBZFS_H int libzfs_create_root(char* fsname, char* filename);
+_LIBZFS_H int libzfs_remove_root(char* fsname, char* filename);
 
 /*
  * zfs encryption management
@@ -676,7 +678,7 @@ _LIBZFS_H void libzfs_add_handle(get_all_cb_t *, zfs_handle_t *);
 /*
  * Functions to create and destroy datasets.
  */
-_LIBZFS_H int zfs_create(libzfs_handle_t *, const char *, zfs_type_t,
+_LIBZFS_H int libzfs_create(libzfs_handle_t *, const char *, zfs_type_t,
     nvlist_t *);
 _LIBZFS_H int zfs_create_ancestors(libzfs_handle_t *, const char *);
 _LIBZFS_H int zfs_destroy(zfs_handle_t *, boolean_t);
