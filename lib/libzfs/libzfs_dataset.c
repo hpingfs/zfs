@@ -5577,3 +5577,29 @@ zfs_wait_status(zfs_handle_t *zhp, zfs_wait_activity_t activity,
 
 	return (error);
 }
+
+int libzfs_ls_root(char* fsname) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+    ret = zfs_ioctl(NULL, ZFS_IOC_LS_ROOT, &zc);
+    return ret;
+}
+
+int libzfs_mkdir_root(char* fsname, char* dirname) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+	(void) strlcpy(zc.zc_value, dirname, sizeof (zc.zc_value));
+    ret = zfs_ioctl(NULL, ZFS_IOC_MKDIR_ROOT, &zc);
+    return ret;
+}
+
+int libzfs_rmdir_root(char* fsname, char* dirname) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+	(void) strlcpy(zc.zc_value, dirname, sizeof (zc.zc_value));
+    ret = zfs_ioctl(NULL, ZFS_IOC_RMDIR_ROOT, &zc);
+    return ret;
+}

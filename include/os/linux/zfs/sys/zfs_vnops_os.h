@@ -48,13 +48,6 @@ struct znode;
 typedef struct znode znode_t;
 struct user_namespace;
 
-typedef int (*filldir_t)(void *, const char *, int, loff_t, unsigned long long, unsigned);
-typedef struct zpl_dir_context {
-	void *dirent;
-	const filldir_t actor;
-	loff_t pos;
-} zpl_dir_context_t;
-
 #define FMODE_WRITE     (0x2)
 
 #define zpl_inode_timestamp_truncate(ts, ip)    \

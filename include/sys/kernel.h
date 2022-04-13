@@ -452,7 +452,7 @@ struct inode {
 //		struct hlist_head	i_dentry;
 //		struct rcu_head		i_rcu;
 //	};
-//	__u64			i_version;
+	uint64_t		i_version;
 	atomic_t		i_count;
 	atomic_t		i_dio_count;
 	atomic_t		i_writecount;
@@ -498,5 +498,19 @@ const struct xattr_handler *uzfs_xattr_handlers;
 #define time_after(m,n) (0)
 
 extern long zfsdev_ioctl(unsigned cmd, unsigned long arg);
+
+typedef struct zpl_dir_context {
+    loff_t pos;
+} zpl_dir_context_t;
+
+#define ZPL_DIR_CONTEXT_INIT(_pos) {   \
+    .pos = _pos,                    \
+}
+
+static inline void
+inode_set_iversion(struct inode *ip, uint64_t val)
+{
+    ip->i_version = val;
+}
 
 #endif	/* _SYS_KERNEL_H */

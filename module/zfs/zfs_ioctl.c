@@ -6261,6 +6261,32 @@ zfs_ioc_get_holds(const char *snapname, nvlist_t *args, nvlist_t *outnvl)
 	return (dsl_dataset_get_holds(snapname, outnvl));
 }
 
+/* ARGSUSED */
+static int
+zfs_ioc_ls_root(zfs_cmd_t *zc)
+{
+    char *fsname = &zc->zc_name;
+	return zfs_readdir_root(fsname);
+}
+
+/* ARGSUSED */
+static int
+zfs_ioc_mkdir_root(zfs_cmd_t *zc)
+{
+    char *fsname = &zc->zc_name;
+    char *dirname = &zc->zc_value;
+	return zfs_mkdir_root(fsname, dirname);
+}
+
+/* ARGSUSED */
+static int
+zfs_ioc_rmdir_root(zfs_cmd_t *zc)
+{
+    char *fsname = &zc->zc_name;
+    char *dirname = &zc->zc_value;
+	return zfs_rmdir_root(fsname, dirname);
+}
+
 /*
  * innvl: {
  *     snapname -> { holdname, ... }
@@ -7649,6 +7675,10 @@ zfs_ioctl_init(void)
 	    zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
 	zfs_ioctl_register_legacy(ZFS_IOC_EVENTS_SEEK, zfs_ioc_events_seek,
 	    zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
+
+	zfs_ioctl_register_legacy(ZFS_IOC_LS_ROOT, zfs_ioc_ls_root, zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
+	zfs_ioctl_register_legacy(ZFS_IOC_MKDIR_ROOT, zfs_ioc_mkdir_root, zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
+	zfs_ioctl_register_legacy(ZFS_IOC_RMDIR_ROOT, zfs_ioc_rmdir_root, zfs_secpolicy_config, NO_NAME, B_FALSE, POOL_CHECK_NONE);
 
 	zfs_ioctl_init_os();
 }

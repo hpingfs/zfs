@@ -1440,12 +1440,10 @@ struct inode *igrab(struct inode *inode)
  */
 void iput(struct inode *inode)
 {
-//    if (inode) {
-//        BUG_ON(inode->i_state & I_CLEAR);
-//
-//        if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock))
-//            iput_final(inode);
-//    }
+    if (inode) {
+        zfs_inactive(inode);
+        destroy_inode(inode);
+    }
 }
 
 int atomic_read(const atomic_t *v)
@@ -1505,7 +1503,7 @@ int atomic_add_unless(atomic_t *v, int a, int u)
 void drop_nlink(struct inode *inode)
 {
 //    WARN_ON(inode->i_nlink == 0);
-//    inode->__i_nlink--;
+    inode->__i_nlink--;
 //    if (!inode->i_nlink)
 //        atomic_long_inc(&inode->i_sb->s_remove_count);
 }
@@ -1520,10 +1518,10 @@ void drop_nlink(struct inode *inode)
  */
 void clear_nlink(struct inode *inode)
 {
-//    if (inode->i_nlink) {
-//        inode->__i_nlink = 0;
+    if (inode->i_nlink) {
+        inode->__i_nlink = 0;
 //        atomic_long_inc(&inode->i_sb->s_remove_count);
-//    }
+    }
 }
 
 /**
@@ -1536,15 +1534,15 @@ void clear_nlink(struct inode *inode)
  */
 void set_nlink(struct inode *inode, unsigned int nlink)
 {
-//    if (!nlink) {
-//        clear_nlink(inode);
-//    } else {
-//        /* Yes, some filesystems do change nlink from zero to one */
+    if (!nlink) {
+        clear_nlink(inode);
+    } else {
+        /* Yes, some filesystems do change nlink from zero to one */
 //        if (inode->i_nlink == 0)
 //            atomic_long_dec(&inode->i_sb->s_remove_count);
-//
-//        inode->__i_nlink = nlink;
-//    }
+
+        inode->__i_nlink = nlink;
+    }
 }
 
 /**
@@ -1557,12 +1555,12 @@ void set_nlink(struct inode *inode, unsigned int nlink)
  */
 void inc_nlink(struct inode *inode)
 {
-//    if (unlikely(inode->i_nlink == 0)) {
+    if (unlikely(inode->i_nlink == 0)) {
 //        WARN_ON(!(inode->i_state & I_LINKABLE));
 //        atomic_long_dec(&inode->i_sb->s_remove_count);
-//    }
-//
-//    inode->__i_nlink++;
+    }
+
+    inode->__i_nlink++;
 }
 
 /**
@@ -1620,7 +1618,24 @@ current_time(struct inode *ip)
 #endif
 
 struct inode *new_inode(struct super_block *sb) {
-    return NULL;
+    struct inode *ip;
+
+    VERIFY3S(zfs_inode_alloc(sb, &ip), ==, 0);
+    inode_set_iversion(ip, 1);
+
+    ip->i_sb = sb;
+
+    pthread_spin_init(&ip->i_lock, PTHREAD_PROCESS_PRIVATE);
+
+    return (ip);
+}
+
+void destroy_inode(struct inode* inode) {
+    if (inode) {
+        if (inode->i_lock)
+            pthread_spin_destroy(&inode->i_lock);
+        zfs_inode_destroy(inode);
+    }
 }
 
 /*
@@ -1985,3 +2000,11 @@ out:
 void schedule() {}
 
 void d_prune_aliases(struct inode *inode) {}
+
+boolean_t
+zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
+{
+    printf("\t%s\tobjnum: %lld\n", name, ino);
+    //printf("emit: %s, objnum: %lld, type: %d\n", name, ino, type);
+    return 1;
+}

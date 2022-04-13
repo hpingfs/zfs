@@ -121,6 +121,9 @@ static int zfs_do_project(int argc, char **argv);
 static int zfs_do_version(int argc, char **argv);
 static int zfs_do_redact(int argc, char **argv);
 static int zfs_do_wait(int argc, char **argv);
+static int zfs_do_ls(int argc, char **argv);
+static int zfs_do_mkdir(int argc, char **argv);
+static int zfs_do_rmdir(int argc, char **argv);
 
 #ifdef __FreeBSD__
 static int zfs_do_jail(int argc, char **argv);
@@ -184,6 +187,9 @@ typedef enum {
 	HELP_JAIL,
 	HELP_UNJAIL,
 	HELP_WAIT,
+	HELP_LS,
+	HELP_MKDIR,
+	HELP_RMDIR,
 } zfs_help_t;
 
 typedef struct zfs_command {
@@ -249,6 +255,9 @@ static zfs_command_t command_table[] = {
 	{ "change-key",	zfs_do_change_key,	HELP_CHANGE_KEY		},
 	{ "redact",	zfs_do_redact,		HELP_REDACT		},
 	{ "wait",	zfs_do_wait,		HELP_WAIT		},
+	{ "ls",	zfs_do_ls,		HELP_LS		},
+	{ "mkdir",	zfs_do_mkdir,		HELP_MKDIR		},
+	{ "rmdir",	zfs_do_rmdir,		HELP_RMDIR		},
 
 #ifdef __FreeBSD__
 	{ "jail",	zfs_do_jail,		HELP_JAIL		},
@@ -414,6 +423,12 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tunjail <jailid|jailname> <filesystem>\n"));
 	case HELP_WAIT:
 		return (gettext("\twait [-t <activity>] <filesystem>\n"));
+	case HELP_LS:
+		return (gettext("\tls <filesystem>\n"));
+	case HELP_MKDIR:
+		return (gettext("\tmkdir <filesystem> <dirname>\n"));
+	case HELP_RMDIR:
+		return (gettext("\trmdir <filesystem> <dirname>\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -8604,6 +8619,72 @@ zfs_do_wait(int argc, char **argv)
 	zfs_close(zhp);
 
 	return (error);
+}
+
+static int
+zfs_do_ls(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("ls %s\n", fsname);
+
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_ls_root(fsname);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
+
+static int
+zfs_do_mkdir(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *dirname = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("mkdir %s/%s\n", fsname, dirname);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_mkdir_root(fsname, dirname);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
+
+static int
+zfs_do_rmdir(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *dirname = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("rmdir %s/%s\n", fsname, dirname);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_rmdir_root(fsname, dirname);
+
+	zfs_close(zhp);
+
+	return (ret);
 }
 
 /*

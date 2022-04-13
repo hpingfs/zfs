@@ -1312,8 +1312,9 @@ top:
 	txtype = zfs_log_create_txtype(Z_DIR, vsecp, vap);
 	if (flags & FIGNORECASE)
 		txtype |= TX_CI;
-	zfs_log_create(zilog, tx, txtype, dzp, zp, dirname, vsecp,
-	    acl_ids.z_fuidp, vap);
+// FIXME(hping)
+//	zfs_log_create(zilog, tx, txtype, dzp, zp, dirname, vsecp,
+//	    acl_ids.z_fuidp, vap);
 
 out:
 	zfs_acl_ids_free(&acl_ids);
@@ -1443,8 +1444,9 @@ top:
 		uint64_t txtype = TX_RMDIR;
 		if (flags & FIGNORECASE)
 			txtype |= TX_CI;
-		zfs_log_remove(zilog, tx, txtype, dzp, name, ZFS_NO_OBJECT,
-		    B_FALSE);
+// FIXME(hping)
+//		zfs_log_remove(zilog, tx, txtype, dzp, name, ZFS_NO_OBJECT,
+//		    B_FALSE);
 	}
 
 	dmu_tx_commit(tx);
@@ -1464,6 +1466,231 @@ out:
 	ZFS_EXIT(zfsvfs);
 	return (error);
 }
+
+int zfs_readdir_root(char* fsname) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        return error;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+	zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(0);
+
+    error = zfs_readdir(root_inode, &ctx, NULL);
+    if (error)
+        return error;
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_FALSE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+out:
+    if (root_inode)
+        destroy_inode(root_inode);
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
+int zfs_mkdir_root(char* fsname, char* dirname) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+    vattr_t *vap = NULL;
+    znode_t *zp = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+	vap = kmem_zalloc(sizeof (vattr_t), KM_SLEEP);
+	uzfs_vap_init(vap, root_inode, S_IFDIR, NULL);
+
+    error = zfs_mkdir(ITOZ(root_inode), dirname, vap, &zp, NULL, 0, NULL);
+    if (error)
+        goto out;
+
+out:
+    if (zp) {
+        zfs_inactive(ZTOI(zp));
+        destroy_inode(ZTOI(zp));
+    }
+
+    if (root_inode) {
+        zfs_inactive(root_inode);
+        destroy_inode(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (vap)
+	    kmem_free(vap, sizeof (vattr_t));
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
+int zfs_rmdir_root(char* fsname, char* dirname) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+    error = zfs_rmdir(ITOZ(root_inode), dirname, NULL, NULL, 0);
+    if (error)
+        goto out;
+
+out:
+    if (root_inode) {
+        zfs_inactive(root_inode);
+        destroy_inode(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
 
 /*
  * Read directory entries from the given directory cursor position and emit
@@ -1591,11 +1818,10 @@ zfs_readdir(struct inode *ip, zpl_dir_context_t *ctx, cred_t *cr)
 			type = ZFS_DIRENT_TYPE(zap.za_first_integer);
 		}
 
-// FIXME(hping)
-//		done = !zpl_dir_emit(ctx, zap.za_name, strlen(zap.za_name),
-//		    objnum, type);
-//		if (done)
-//			break;
+		done = !zpl_dir_emit(ctx, zap.za_name, strlen(zap.za_name),
+		    objnum, type);
+		if (done)
+			break;
 
 		/* Prefetch znode */
 		if (prefetch) {

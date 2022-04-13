@@ -77,3 +77,19 @@ void zpl_prune_sb(int64_t nr_to_scan, void *arg) {};
 
 int zfsvfs_parse_options(char *mntopts, vfs_t **vfsp) { return 0; }
 
+void uzfs_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
+{
+	vap->va_mask = ATTR_MODE;
+	vap->va_mode = mode;
+	vap->va_uid = crgetfsuid(cr);
+
+	if (dir && dir->i_mode & S_ISGID) {
+		vap->va_gid = KGID_TO_SGID(dir->i_gid);
+		if (S_ISDIR(mode))
+			vap->va_mode |= S_ISGID;
+	} else {
+		vap->va_gid = crgetfsgid(cr);
+	}
+}
+
+
