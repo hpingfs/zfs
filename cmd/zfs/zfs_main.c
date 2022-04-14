@@ -126,6 +126,8 @@ static int zfs_do_mkdir(int argc, char **argv);
 static int zfs_do_rmdir(int argc, char **argv);
 static int zfs_do_touch(int argc, char **argv);
 static int zfs_do_rm(int argc, char **argv);
+static int zfs_do_read(int argc, char **argv);
+static int zfs_do_write(int argc, char **argv);
 
 #ifdef __FreeBSD__
 static int zfs_do_jail(int argc, char **argv);
@@ -194,6 +196,8 @@ typedef enum {
 	HELP_RMDIR,
 	HELP_TOUCH,
 	HELP_RM,
+	HELP_READ,
+	HELP_WRITE,
 } zfs_help_t;
 
 typedef struct zfs_command {
@@ -264,6 +268,8 @@ static zfs_command_t command_table[] = {
 	{ "rmdir",	zfs_do_rmdir,		HELP_RMDIR		},
 	{ "touch",	zfs_do_touch,		HELP_TOUCH		},
 	{ "rm",	zfs_do_rm,		HELP_RM		},
+	{ "read",	zfs_do_read,		HELP_READ		},
+	{ "write",	zfs_do_write,		HELP_WRITE	},
 
 #ifdef __FreeBSD__
 	{ "jail",	zfs_do_jail,		HELP_JAIL		},
@@ -439,6 +445,10 @@ get_usage(zfs_help_t idx)
 		return (gettext("\ttouch <filesystem> <filename>\n"));
 	case HELP_RM:
 		return (gettext("\trm <filesystem> <filename>\n"));
+	case HELP_READ:
+		return (gettext("\tread <filesystem> <filename>\n"));
+	case HELP_WRITE:
+		return (gettext("\twrite <filesystem> <filename> <data>\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -8741,6 +8751,53 @@ zfs_do_rm(int argc, char **argv)
 
 	return (ret);
 }
+
+static int
+zfs_do_read(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *filename = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("read %s/%s\n", fsname, filename);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    char buf[4096];
+    memset(buf, 0, 4096);
+    ret = libzfs_rw_root(fsname, filename, buf, 4096, 0);
+
+    printf("%s\n", buf);
+	zfs_close(zhp);
+
+	return (ret);
+}
+
+static int
+zfs_do_write(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *filename = argv[2];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    printf("write %s/%s\n", fsname, filename);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    char *data = argv[3];
+    ret = libzfs_rw_root(fsname, filename, data, strlen(data), 1);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
+
 
 
 /*

@@ -681,8 +681,9 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 			/* Avoid clobbering EFAULT. */
 			error = error1;
 
-		zfs_log_write(zilog, tx, TX_WRITE, zp, woff, tx_bytes, ioflag,
-		    NULL, NULL);
+// FIXME(hping)
+//		zfs_log_write(zilog, tx, TX_WRITE, zp, woff, tx_bytes, ioflag,
+//		    NULL, NULL);
 		dmu_tx_commit(tx);
 
 		if (error != 0)

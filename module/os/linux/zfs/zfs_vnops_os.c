@@ -1847,6 +1847,101 @@ out:
     return error;
 }
 
+int zfs_rw_root(char* fsname, char* name, const struct iovec *iov, int rw) {
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+    vattr_t *vap = NULL;
+    znode_t *zp = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    int error = 0;
+    umode_t mode = S_IFREG;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error)
+        goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    if (error)
+        goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error)
+        goto out;
+
+    error = zfs_lookup(ITOZ(root_inode), name, &zp, 0, NULL, NULL, NULL);
+    if (error)
+        goto out;
+
+    if (!zp) {
+        printf("%s/%s not exist\n", fsname, name);
+        goto out;
+    }
+
+    zfs_uio_t uio;
+	zfs_uio_iovec_init(&uio, iov, 1, 0, UIO_USERSPACE, iov->iov_len, 0);
+
+    if (rw == 1) {
+        error = zfs_write(zp, &uio, 0, NULL);
+    } else {
+        error = zfs_read(zp, &uio, 0, NULL);
+    }
+
+out:
+    if (zp) {
+        zfs_inactive(ZTOI(zp));
+        destroy_inode(ZTOI(zp));
+    }
+
+    if (root_inode) {
+        zfs_inactive(root_inode);
+        destroy_inode(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (vap)
+	    kmem_free(vap, sizeof (vattr_t));
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
 
 
 /*

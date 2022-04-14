@@ -549,6 +549,7 @@ _LIBZFS_H int libzfs_mkdir_root(char* fsname, char* dirname);
 _LIBZFS_H int libzfs_rmdir_root(char* fsname, char* dirname);
 _LIBZFS_H int libzfs_create_root(char* fsname, char* filename);
 _LIBZFS_H int libzfs_remove_root(char* fsname, char* filename);
+_LIBZFS_H int libzfs_rw_root(char* fsname, char* filename, char *buf, size_t size, int rw);
 
 /*
  * zfs encryption management

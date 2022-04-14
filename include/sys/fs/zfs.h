@@ -1444,6 +1444,7 @@ typedef enum zfs_ioc {
 	ZFS_IOC_RMDIR_ROOT,
 	ZFS_IOC_CREATE_ROOT,
 	ZFS_IOC_REMOVE_ROOT,
+	ZFS_IOC_RW_ROOT,
 
 	/*
 	 * Per-platform (Optional) - 8/128 numbers reserved.

@@ -5622,4 +5622,21 @@ int libzfs_remove_root(char* fsname, char* filename) {
     return ret;
 }
 
+int libzfs_rw_root(char* fsname, char* filename, char *buf, size_t size, int rw) {
+    int ret = 0;
+	zfs_cmd_t zc = {"\0"};
+	(void) strlcpy(zc.zc_name, fsname, sizeof (zc.zc_name));
+	(void) strlcpy(zc.zc_value, filename, sizeof (zc.zc_value));
+    zc.zc_flags = rw;
+    if (rw) {
+	    (void) strlcpy(zc.zc_string, buf, sizeof(zc.zc_string));
+    }
+    ret = zfs_ioctl(NULL, ZFS_IOC_RW_ROOT, &zc);
+
+    if (!rw) {
+	    (void) strlcpy(buf, zc.zc_string, sizeof(zc.zc_string));
+    }
+    return ret;
+}
+
 
