@@ -44,6 +44,7 @@
 #include <sys/zfs_onexit.h>
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_znode.h>
+#include <sys/zfs_vnops.h>
 #include <sys/zstd/zstd.h>
 #include <sys/zvol.h>
 #include <zfs_fletcher.h>
@@ -1000,7 +1001,7 @@ kmem_cache_reap_active(void)
 	return (0);
 }
 
-void *zvol_tag = "zvol_tag";
+//void *zvol_tag = "zvol_tag";
 
 void
 zvol_create_minor(const char *name)
@@ -1412,6 +1413,7 @@ zfsvfs_update_fromname(const char *oldname, const char *newname)
 
 struct inode *igrab(struct inode *inode)
 {
+    printf("%s: %ld\n", __func__, inode->i_ino);
     return inode;
 //    spin_lock(&inode->i_lock);
 //    if (!(inode->i_state & (I_FREEING|I_WILL_FREE))) {
@@ -1440,52 +1442,11 @@ struct inode *igrab(struct inode *inode)
  */
 void iput(struct inode *inode)
 {
+    printf("%s: %ld\n", __func__, inode->i_ino);
     if (inode) {
         zfs_inactive(inode);
         destroy_inode(inode);
     }
-}
-
-int atomic_read(const atomic_t *v)
-{
-    return (v->counter);
-}
-
-/**
- * atomic_set - set atomic variable
- * @v: pointer of type atomic_t
- * @i: required value
- *
- * Atomically sets the value of @v to @i.
- */
-void atomic_set(atomic_t *v, int i)
-{
-	v->counter = i;
-}
-
-
-/**
- * __atomic_add_unless - add unless the number is already a given value
- * @v: pointer of type atomic_t
- * @a: the amount to add to v...
- * @u: ...unless v is equal to u.
- *
- * Atomically adds @a to @v, so long as @v was not already @u.
- * Returns the old value of @v.
- */
-int atomic_add_unless(atomic_t *v, int a, int u)
-{
-	int c, old;
-	c = atomic_read(v);
-//	for (;;) {
-//		if (unlikely(c == (u)))
-//			break;
-//		old = atomic_cmpxchg((v), c, c + (a));
-//		if (likely(old == c))
-//			break;
-//		c = old;
-//	}
-	return c;
 }
 
 
@@ -1502,7 +1463,8 @@ int atomic_add_unless(atomic_t *v, int a, int u)
  */
 void drop_nlink(struct inode *inode)
 {
-//    WARN_ON(inode->i_nlink == 0);
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    WARN_ON(inode->i_nlink == 0);
     inode->__i_nlink--;
 //    if (!inode->i_nlink)
 //        atomic_long_inc(&inode->i_sb->s_remove_count);
@@ -1518,6 +1480,7 @@ void drop_nlink(struct inode *inode)
  */
 void clear_nlink(struct inode *inode)
 {
+    printf("%s: %ld\n", __func__, inode->i_ino);
     if (inode->i_nlink) {
         inode->__i_nlink = 0;
 //        atomic_long_inc(&inode->i_sb->s_remove_count);
@@ -1534,6 +1497,7 @@ void clear_nlink(struct inode *inode)
  */
 void set_nlink(struct inode *inode, unsigned int nlink)
 {
+    printf("%s: %ld\n", __func__, inode->i_ino);
     if (!nlink) {
         clear_nlink(inode);
     } else {
@@ -1555,6 +1519,7 @@ void set_nlink(struct inode *inode, unsigned int nlink)
  */
 void inc_nlink(struct inode *inode)
 {
+    printf("%s: %ld\n", __func__, inode->i_ino);
     if (unlikely(inode->i_nlink == 0)) {
 //        WARN_ON(!(inode->i_state & I_LINKABLE));
 //        atomic_long_dec(&inode->i_sb->s_remove_count);
@@ -1562,6 +1527,345 @@ void inc_nlink(struct inode *inode)
 
     inode->__i_nlink++;
 }
+
+struct inode *new_inode(struct super_block *sb) {
+    struct inode *ip;
+
+    VERIFY3S(zfs_inode_alloc(sb, &ip), ==, 0);
+    inode_set_iversion(ip, 1);
+
+    ip->i_sb = sb;
+
+    pthread_spin_init(&ip->i_lock, PTHREAD_PROCESS_PRIVATE);
+
+    printf("%s: %ld\n", __func__, ip->i_ino);
+    return (ip);
+}
+
+void destroy_inode(struct inode* inode) {
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    if (inode) {
+        if (inode->i_lock)
+            pthread_spin_destroy(&inode->i_lock);
+        zfs_inode_destroy(inode);
+    }
+}
+
+/*
+ * These are initializations that only need to be done
+ * once, because the fields are idempotent across use
+ * of the inode, so let the slab aware of that.
+ */
+void inode_init_once(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    memset(inode, 0, sizeof(*inode));
+//    INIT_HLIST_NODE(&inode->i_hash);
+//    INIT_LIST_HEAD(&inode->i_devices);
+//    INIT_LIST_HEAD(&inode->i_io_list);
+//    INIT_LIST_HEAD(&inode->i_lru);
+//    address_space_init_once(&inode->i_data);
+//    i_size_ordered_init(inode);
+}
+
+void
+inode_set_iversion(struct inode *ip, uint64_t val)
+{
+    ip->i_version = val;
+}
+
+/**
+ * write_inode_now  -   write an inode to disk
+ * @inode: inode to write to disk
+ * @sync: whether the write should be synchronous or not
+ *
+ * This function commits an inode to disk immediately if it is dirty. This is
+ * primarily needed by knfsd.
+ *
+ * The caller must either have a ref on the inode or must have set I_WILL_FREE.
+ */
+int write_inode_now(struct inode *inode, int sync)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    return 0;
+//    struct bdi_writeback *wb = &inode_to_bdi(inode)->wb;
+//    struct writeback_control wbc = {
+//        .nr_to_write = LONG_MAX,
+//        .sync_mode = sync ? WB_SYNC_ALL : WB_SYNC_NONE,
+//        .range_start = 0,
+//        .range_end = LLONG_MAX,
+//    };
+//
+//    if (!mapping_cap_writeback_dirty(inode->i_mapping))
+//        wbc.nr_to_write = 0;
+//
+//    might_sleep();
+//    return writeback_single_inode(inode, wb, &wbc);
+}
+
+/**
+ *  __remove_inode_hash - remove an inode from the hash
+ *  @inode: inode to unhash
+ *
+ *  Remove an inode from the superblock.
+ */
+void remove_inode_hash(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+//    spin_lock(&inode_hash_lock);
+//    spin_lock(&inode->i_lock);
+//    hlist_del_init(&inode->i_hash);
+//    spin_unlock(&inode->i_lock);
+//    spin_unlock(&inode_hash_lock);
+}
+
+/**
+ * inode_owner_or_capable - check current task permissions to inode
+ * @inode: inode being checked
+ *
+ * Return true if current either has CAP_FOWNER in a namespace with the
+ * inode owner uid mapped, or owns the file.
+ */
+boolean_t inode_owner_or_capable(const struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+//    struct user_namespace *ns;
+//
+//    if (uid_eq(current_fsuid(), inode->i_uid))
+//        return true;
+//
+//    ns = current_user_ns();
+//    if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
+//        return true;
+    return B_FALSE;
+}
+
+/**
+ * unlock_new_inode - clear the I_NEW state and wake up any waiters
+ * @inode:	new inode to unlock
+ *
+ * Called when the inode is fully initialised to clear the new state of the
+ * inode and wake up anyone waiting for the inode to finish initialisation.
+ */
+void unlock_new_inode(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+//	lockdep_annotate_inode_mutex_key(inode);
+//	spin_lock(&inode->i_lock);
+//	WARN_ON(!(inode->i_state & I_NEW));
+//	inode->i_state &= ~I_NEW & ~I_CREATING;
+//	smp_mb();
+//	wake_up_bit(&inode->i_state, __I_NEW);
+//	spin_unlock(&inode->i_lock);
+}
+
+int insert_inode_locked(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    return 0;
+}
+
+/*
+ * NOTE: unlike i_size_read(), i_size_write() does need locking around it
+ * (normally i_mutex), otherwise on 32bit/SMP an update of i_size_seqcount
+ * can be lost, resulting in subsequent i_size_read() calls spinning forever.
+ */
+void i_size_write(struct inode *inode, loff_t i_size)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+	inode->i_size = i_size;
+}
+
+/*
+ * inode_set_flags - atomically set some inode flags
+ *
+ * Note: the caller should be holding i_mutex, or else be sure that
+ * they have exclusive access to the inode structure (i.e., while the
+ * inode is being instantiated).  The reason for the cmpxchg() loop
+ * --- which wouldn't be necessary if all code paths which modify
+ * i_flags actually followed this rule, is that there is at least one
+ * code path which doesn't today so we use cmpxchg() out of an abundance
+ * of caution.
+ *
+ * In the long run, i_mutex is overkill, and we should probably look
+ * at using the i_lock spinlock to protect i_flags, and then make sure
+ * it is so documented in include/linux/fs.h and that all code follows
+ * the locking convention!!
+ */
+void inode_set_flags(struct inode *inode, unsigned int flags, unsigned int mask)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+//	unsigned int old_flags, new_flags;
+//
+//	WARN_ON_ONCE(flags & ~mask);
+//	do {
+//		old_flags = ACCESS_ONCE(inode->i_flags);
+//		new_flags = (old_flags & ~mask) | flags;
+//	} while (unlikely(cmpxchg(&inode->i_flags, old_flags,
+//				  new_flags) != old_flags));
+}
+
+void mark_inode_dirty(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+}
+
+struct dentry *d_make_root(struct inode *root_inode) {
+    printf("%s: %ld\n", __func__, root_inode->i_ino);
+    return NULL;
+}
+
+void d_prune_aliases(struct inode *inode) {
+    printf("%s: %ld\n", __func__, inode->i_ino);
+}
+
+/**
+ * shrink_dcache_sb - shrink dcache for a superblock
+ * @sb: superblock
+ *
+ * Shrink the dcache for the specified super block. This is used to free
+ * the dcache before unmounting a file system.
+ */
+void shrink_dcache_sb(struct super_block *sb)
+{
+    printf("%s\n", __func__);
+//    LIST_HEAD(tmp);
+//
+//    spin_lock(&dcache_lru_lock);
+//    while (!list_empty(&sb->s_dentry_lru)) {
+//        list_splice_init(&sb->s_dentry_lru, &tmp);
+//        spin_unlock(&dcache_lru_lock);
+//        shrink_dentry_list(&tmp);
+//        spin_lock(&dcache_lru_lock);
+//    }
+//    spin_unlock(&dcache_lru_lock);
+}
+
+boolean_t zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
+{
+    printf("\t%s\tobjnum: %ld\n", name, ino);
+    return 1;
+}
+
+void update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
+{
+    printf("%s: %ld\n", __func__, ZTOI(zp)->i_ino);
+}
+
+int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio) {
+    printf("%s: %ld\n", __func__, ZTOI(zp)->i_ino);
+    return 0;
+}
+
+uid_t zfs_uid_read(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    return 0;
+//	return (zfs_uid_read_impl(ip));
+}
+
+gid_t zfs_gid_read(struct inode *inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    return 0;
+//	return (zfs_gid_read_impl(ip));
+}
+
+void zfs_uid_write(struct inode *inode, uid_t uid)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+	inode->i_uid = make_kuid(kcred->user_ns, uid);
+}
+
+void zfs_gid_write(struct inode *inode, gid_t gid)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+	inode->i_gid = make_kgid(kcred->user_ns, gid);
+}
+
+/**
+ * truncate_setsize - update inode and pagecache for a new file size
+ * @inode: inode
+ * @newsize: new file size
+ *
+ * truncate_setsize updates i_size and performs pagecache truncation (if
+ * necessary) to @newsize. It will be typically be called from the filesystem's
+ * setattr function when ATTR_SIZE is passed in.
+ *
+ * Must be called with inode_mutex held and before all filesystem specific
+ * block truncation has been performed.
+ */
+void truncate_setsize(struct inode *inode, loff_t newsize)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+//	loff_t oldsize = inode->i_size;
+//
+//	i_size_write(inode, newsize);
+//	if (newsize > oldsize)
+//		pagecache_isize_extended(inode, oldsize, newsize);
+//	truncate_pagecache(inode, newsize);
+}
+
+int register_filesystem(struct file_system_type * fs)
+{
+    printf("%s\n", __func__);
+	return 0;
+}
+
+int unregister_filesystem(struct file_system_type * fs)
+{
+    printf("%s\n", __func__);
+	return 0;
+}
+
+void deactivate_super(struct super_block *s) {
+    printf("%s\n", __func__);
+}
+
+// huangping: common utility
+
+int atomic_read(const atomic_t *v)
+{
+    return atomic_load_int(&v->counter);
+}
+
+/**
+ * atomic_set - set atomic variable
+ * @v: pointer of type atomic_t
+ * @i: required value
+ *
+ * Atomically sets the value of @v to @i.
+ */
+void atomic_set(atomic_t *v, int i)
+{
+    atomic_store_int(&v->counter, i);
+}
+
+
+/**
+ * __atomic_add_unless - add unless the number is already a given value
+ * @v: pointer of type atomic_t
+ * @a: the amount to add to v...
+ * @u: ...unless v is equal to u.
+ *
+ * Atomically adds @a to @v, so long as @v was not already @u.
+ * Returns the old value of @v.
+ */
+int atomic_add_unless(atomic_t *v, int a, int u)
+{
+	int c, old;
+	c = atomic_read(v);
+	for (;;) {
+		if (unlikely(c == (u)))
+			break;
+		old = atomic_cas_32((volatile uint32_t*)(&v->counter), c, c + (a));
+		if (likely(old == c))
+			break;
+		c = old;
+	}
+	return c;
+}
+
 
 /**
  * timespec_trunc - Truncate timespec to a granularity
@@ -1577,6 +1881,7 @@ void inc_nlink(struct inode *inode)
  */
 struct timespec timespec_trunc(struct timespec t, unsigned gran)
 {
+    printf("%s\n", __func__);
 //    /*
 //     * Division is pretty slow so avoid it for common cases.
 //     * Currently current_kernel_time() never returns better than
@@ -1594,7 +1899,8 @@ struct timespec timespec_trunc(struct timespec t, unsigned gran)
 
 struct timespec current_kernel_time(void)
 {
-    struct timespec now;
+    printf("%s\n", __func__);
+    struct timespec now = {0};
     return now;
 //    struct timekeeper *tk = &timekeeper;
 //    struct timespec64 now;
@@ -1610,122 +1916,48 @@ struct timespec current_kernel_time(void)
 }
 
 #if !defined(HAVE_CURRENT_TIME)
-extern struct timespec
-current_time(struct inode *ip)
+struct timespec current_time(struct inode *inode)
 {
-    return (timespec_trunc(current_kernel_time(), ip->i_sb->s_time_gran));
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    return (timespec_trunc(current_kernel_time(), inode->i_sb->s_time_gran));
 }
 #endif
 
-struct inode *new_inode(struct super_block *sb) {
-    struct inode *ip;
-
-    VERIFY3S(zfs_inode_alloc(sb, &ip), ==, 0);
-    inode_set_iversion(ip, 1);
-
-    ip->i_sb = sb;
-
-    pthread_spin_init(&ip->i_lock, PTHREAD_PROCESS_PRIVATE);
-
-    return (ip);
-}
-
-void destroy_inode(struct inode* inode) {
-    if (inode) {
-        if (inode->i_lock)
-            pthread_spin_destroy(&inode->i_lock);
-        zfs_inode_destroy(inode);
-    }
-}
 
 /*
- * These are initializations that only need to be done
- * once, because the fields are idempotent across use
- * of the inode, so let the slab aware of that.
+ * lhs < rhs:  return <0
+ * lhs == rhs: return 0
+ * lhs > rhs:  return >0
  */
-void inode_init_once(struct inode *inode)
+int timespec_compare(const struct timespec *lhs, const struct timespec *rhs)
 {
-    memset(inode, 0, sizeof(*inode));
-//    INIT_HLIST_NODE(&inode->i_hash);
-//    INIT_LIST_HEAD(&inode->i_devices);
-//    INIT_LIST_HEAD(&inode->i_io_list);
-//    INIT_LIST_HEAD(&inode->i_lru);
-//    address_space_init_once(&inode->i_data);
-//    i_size_ordered_init(inode);
-}
-
-/**
- * write_inode_now  -   write an inode to disk
- * @inode: inode to write to disk
- * @sync: whether the write should be synchronous or not
- *
- * This function commits an inode to disk immediately if it is dirty. This is
- * primarily needed by knfsd.
- *
- * The caller must either have a ref on the inode or must have set I_WILL_FREE.
- */
-int write_inode_now(struct inode *inode, int sync)
-{
-    return 0;
-//    struct bdi_writeback *wb = &inode_to_bdi(inode)->wb;
-//    struct writeback_control wbc = {
-//        .nr_to_write = LONG_MAX,
-//        .sync_mode = sync ? WB_SYNC_ALL : WB_SYNC_NONE,
-//        .range_start = 0,
-//        .range_end = LLONG_MAX,
-//    };
-//
-//    if (!mapping_cap_writeback_dirty(inode->i_mapping))
-//        wbc.nr_to_write = 0;
-//
-//    might_sleep();
-//    return writeback_single_inode(inode, wb, &wbc);
-}
-
-int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio) {
-    return 0;
+    printf("%s\n", __func__);
+	if (lhs->tv_sec < rhs->tv_sec)
+		return -1;
+	if (lhs->tv_sec > rhs->tv_sec)
+		return 1;
+	return lhs->tv_nsec - rhs->tv_nsec;
 }
 
 int groupmember(gid_t gid, const cred_t *cr) {
+    printf("%s\n", __func__);
     return 0;
 }
 
 /* Return the filesystem user id */
-uid_t
-crgetfsuid(const cred_t *cr)
+uid_t crgetfsuid(const cred_t *cr)
 {
+    printf("%s\n", __func__);
     return 0;
 //	return (KUID_TO_SUID(cr->fsuid));
 }
 
 /* Return the filesystem group id */
-gid_t
-crgetfsgid(const cred_t *cr)
+gid_t crgetfsgid(const cred_t *cr)
 {
+    printf("%s\n", __func__);
     return 0;
 //	return (KGID_TO_SGID(cr->fsgid));
-}
-
-
-/**
- * shrink_dcache_sb - shrink dcache for a superblock
- * @sb: superblock
- *
- * Shrink the dcache for the specified super block. This is used to free
- * the dcache before unmounting a file system.
- */
-void shrink_dcache_sb(struct super_block *sb)
-{
-//    LIST_HEAD(tmp);
-//
-//    spin_lock(&dcache_lru_lock);
-//    while (!list_empty(&sb->s_dentry_lru)) {
-//        list_splice_init(&sb->s_dentry_lru, &tmp);
-//        spin_unlock(&dcache_lru_lock);
-//        shrink_dentry_list(&tmp);
-//        spin_lock(&dcache_lru_lock);
-//    }
-//    spin_unlock(&dcache_lru_lock);
 }
 
 /**
@@ -1769,64 +2001,7 @@ int fls(int x)
     return r + 1;
 }
 
-/**
- *  __remove_inode_hash - remove an inode from the hash
- *  @inode: inode to unhash
- *
- *  Remove an inode from the superblock.
- */
-void remove_inode_hash(struct inode *inode)
-{
-//    spin_lock(&inode_hash_lock);
-//    spin_lock(&inode->i_lock);
-//    hlist_del_init(&inode->i_hash);
-//    spin_unlock(&inode->i_lock);
-//    spin_unlock(&inode_hash_lock);
-}
-
-/**
- * inode_owner_or_capable - check current task permissions to inode
- * @inode: inode being checked
- *
- * Return true if current either has CAP_FOWNER in a namespace with the
- * inode owner uid mapped, or owns the file.
- */
-boolean_t
-inode_owner_or_capable(const struct inode *inode)
-{
-//    struct user_namespace *ns;
-//
-//    if (uid_eq(current_fsuid(), inode->i_uid))
-//        return true;
-//
-//    ns = current_user_ns();
-//    if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
-//        return true;
-    return B_FALSE;
-}
-
-/**
- * unlock_new_inode - clear the I_NEW state and wake up any waiters
- * @inode:	new inode to unlock
- *
- * Called when the inode is fully initialised to clear the new state of the
- * inode and wake up anyone waiting for the inode to finish initialisation.
- */
-void unlock_new_inode(struct inode *inode)
-{
-//	lockdep_annotate_inode_mutex_key(inode);
-//	spin_lock(&inode->i_lock);
-//	WARN_ON(!(inode->i_state & I_NEW));
-//	inode->i_state &= ~I_NEW & ~I_CREATING;
-//	smp_mb();
-//	wake_up_bit(&inode->i_state, __I_NEW);
-//	spin_unlock(&inode->i_lock);
-}
-
-int insert_inode_locked(struct inode *inode)
-{
-    return 0;
-}
+int ilog2(uint64_t n) { return (int)log2(n); }
 
 /**
  * has_capability - Does a task have a capability in init_user_ns
@@ -1838,8 +2013,7 @@ int insert_inode_locked(struct inode *inode)
  *
  * Note that this does not set PF_SUPERPRIV on the task.
  */
-boolean_t
-has_capability(struct task_struct *t, int cap)
+boolean_t has_capability(struct task_struct *t, int cap)
 {
     return B_FALSE;
 //    return has_ns_capability(t, &init_user_ns, cap);
@@ -1855,129 +2029,18 @@ has_capability(struct task_struct *t, int cap)
  * This sets PF_SUPERPRIV on the task if the capability is available on the
  * assumption that it's about to be used.
  */
-boolean_t
-capable(int cap)
+boolean_t capable(int cap)
 {
     return B_TRUE;
 //    return ns_capable(&init_user_ns, cap);
 }
 
-/*
- * NOTE: unlike i_size_read(), i_size_write() does need locking around it
- * (normally i_mutex), otherwise on 32bit/SMP an update of i_size_seqcount
- * can be lost, resulting in subsequent i_size_read() calls spinning forever.
- */
-void i_size_write(struct inode *inode, loff_t i_size)
-{
-	inode->i_size = i_size;
-}
-
-/*
- * inode_set_flags - atomically set some inode flags
- *
- * Note: the caller should be holding i_mutex, or else be sure that
- * they have exclusive access to the inode structure (i.e., while the
- * inode is being instantiated).  The reason for the cmpxchg() loop
- * --- which wouldn't be necessary if all code paths which modify
- * i_flags actually followed this rule, is that there is at least one
- * code path which doesn't today so we use cmpxchg() out of an abundance
- * of caution.
- *
- * In the long run, i_mutex is overkill, and we should probably look
- * at using the i_lock spinlock to protect i_flags, and then make sure
- * it is so documented in include/linux/fs.h and that all code follows
- * the locking convention!!
- */
-void inode_set_flags(struct inode *inode, unsigned int flags,
-		     unsigned int mask)
-{
-//	unsigned int old_flags, new_flags;
-//
-//	WARN_ON_ONCE(flags & ~mask);
-//	do {
-//		old_flags = ACCESS_ONCE(inode->i_flags);
-//		new_flags = (old_flags & ~mask) | flags;
-//	} while (unlikely(cmpxchg(&inode->i_flags, old_flags,
-//				  new_flags) != old_flags));
-}
-
-void mark_inode_dirty(struct inode *inode, int flags)
-{
-}
-
-uid_t zfs_uid_read(struct inode *ip)
-{
-    return 0;
-//	return (zfs_uid_read_impl(ip));
-}
-
-gid_t zfs_gid_read(struct inode *ip)
-{
-    return 0;
-//	return (zfs_gid_read_impl(ip));
-}
-
-void zfs_uid_write(struct inode *ip, uid_t uid)
-{
-	ip->i_uid = make_kuid(kcred->user_ns, uid);
-}
-
-void zfs_gid_write(struct inode *ip, gid_t gid)
-{
-	ip->i_gid = make_kgid(kcred->user_ns, gid);
-}
-
-/**
- * truncate_setsize - update inode and pagecache for a new file size
- * @inode: inode
- * @newsize: new file size
- *
- * truncate_setsize updates i_size and performs pagecache truncation (if
- * necessary) to @newsize. It will be typically be called from the filesystem's
- * setattr function when ATTR_SIZE is passed in.
- *
- * Must be called with inode_mutex held and before all filesystem specific
- * block truncation has been performed.
- */
-void truncate_setsize(struct inode *inode, loff_t newsize)
-{
-//	loff_t oldsize = inode->i_size;
-//
-//	i_size_write(inode, newsize);
-//	if (newsize > oldsize)
-//		pagecache_isize_extended(inode, oldsize, newsize);
-//	truncate_pagecache(inode, newsize);
-}
-
-
-/*
- * lhs < rhs:  return <0
- * lhs == rhs: return 0
- * lhs > rhs:  return >0
- */
-int timespec_compare(const struct timespec *lhs, const struct timespec *rhs)
-{
-	if (lhs->tv_sec < rhs->tv_sec)
-		return -1;
-	if (lhs->tv_sec > rhs->tv_sec)
-		return 1;
-	return lhs->tv_nsec - rhs->tv_nsec;
-}
-
-void
-update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
-{
-}
-
-int ilog2(uint64_t n) { return (int)log2(n); }
-
-struct dentry *d_make_root(struct inode *root_inode) { return NULL; }
 
 long zfsdev_ioctl(unsigned cmd, unsigned long arg)
 {
 	uint_t vecnum;
 	zfs_cmd_t *zc;
-	int error, rc;
+	int error;
 
 	vecnum = cmd - ZFS_IOC_FIRST;
 
@@ -1988,8 +2051,8 @@ long zfsdev_ioctl(unsigned cmd, unsigned long arg)
 		goto out;
 	}
 	error = -zfsdev_ioctl_common(vecnum, zc, 0);
-	rc = ddi_copyout(zc, (void *)(uintptr_t)arg, sizeof (zfs_cmd_t), 0);
-	if (error == 0 && rc != 0)
+	ddi_copyout(zc, (void *)(uintptr_t)arg, sizeof (zfs_cmd_t), 0);
+	if (error != 0)
 		error = -SET_ERROR(EFAULT);
 out:
 	kmem_free(zc, sizeof (zfs_cmd_t));
@@ -1997,14 +2060,6 @@ out:
 
 }
 
-void schedule() {}
-
-void d_prune_aliases(struct inode *inode) {}
-
-boolean_t
-zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
-{
-    printf("\t%s\tobjnum: %lld\n", name, ino);
-    //printf("emit: %s, objnum: %lld, type: %d\n", name, ino, type);
-    return 1;
+void schedule() {
+    printf("%s\n", __func__);
 }

@@ -41,4 +41,6 @@ extern void zpl_prune_sb(int64_t nr_to_scan, void *arg);
 #error "Unsupported kernel"
 #endif
 
+#define zvol_tag(zv) (NULL)
+
 #endif	/* _SYS_UZFS_H */

@@ -23,15 +23,31 @@
 #define	_SYS_KERNEL_H
 
 #include <sys/zfs_context.h>
+#include <sys/uspl.h>
+
+#define WARN_ON(s) ASSERT(s)
 
 struct spinlock_t;
 
-extern struct inode *igrab(struct inode *inode);
-extern void iput(struct inode *inode);
-extern void drop_nlink(struct inode *inode);
-extern void clear_nlink(struct inode *inode);
-extern void set_nlink(struct inode *inode, unsigned int nlink);
-extern void inc_nlink(struct inode *inode);
+struct file_system_type {};
+struct file_system_type zpl_fs_type;
+
+typedef struct znode znode_t;
+typedef struct objset objset_t;
+typedef struct zfs_cmd zfs_cmd_t;
+
+const struct super_operations uzfs_super_operations;
+const struct export_operations uzfs_export_operations;
+const struct dentry_operations uzfs_dentry_operations;
+const struct xattr_handler *uzfs_xattr_handlers;
+
+typedef struct zpl_dir_context {
+    loff_t pos;
+} zpl_dir_context_t;
+
+#define ZPL_DIR_CONTEXT_INIT(_pos) {   \
+    .pos = _pos,                    \
+}
 
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -45,11 +61,9 @@ extern void inc_nlink(struct inode *inode);
     (type *)( (char *)__mptr - offsetof(type,member) );})
 
 typedef struct {
-            int counter;
+    volatile int counter;
 } atomic_t;
 
-extern int atomic_read(const atomic_t *v);
-#define atomic_inc_not_zero(v)      atomic_add_unless((v), 1, 0)
 
 typedef	int	umode_t;
 
@@ -72,9 +86,6 @@ static inline kgid_t __kgid_val(kgid_t gid)
     return gid;
 }
 
-extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
-extern struct timespec current_kernel_time(void);
-
 #if defined(CONFIG_64BIT)
 #define	TIME_MAX			INT64_MAX
 #define	TIME_MIN			INT64_MIN
@@ -87,17 +98,11 @@ extern struct timespec current_kernel_time(void);
 	((ts)->tv_sec < TIME_MIN || (ts)->tv_sec > TIME_MAX)
 
 
+#define jiffies 0
+#define time_after(m,n) (0)
+
 #define task_io_account_read(n)
 #define task_io_account_write(n)
-
-
-/*
- * 4.9 API change
- *  Preferred interface to get the current FS time.
- * */
-#if !defined(HAVE_CURRENT_TIME)
-extern struct timespec current_time(struct inode *ip);
-#endif
 
 #define S_IRWXUGO   (S_IRWXU|S_IRWXG|S_IRWXO)
 
@@ -149,8 +154,6 @@ extern struct timespec current_time(struct inode *ip);
 #define S_IOPS_WRAPPER  8192    /* i_op points to struct inode_operations_wrapper */
 
 #define printk(...) ((void) 0)
-
-#define mappedread(a,b,c) fake_mappedread(a,b,c)
 
 struct cred {
 //	atomic_t	usage;
@@ -482,35 +485,73 @@ struct inode {
 	void			*i_private; /* fs or device private pointer */
 };
 
-const struct super_operations uzfs_super_operations;
-const struct export_operations uzfs_export_operations;
-const struct dentry_operations uzfs_dentry_operations;
-const struct xattr_handler *uzfs_xattr_handlers;
+extern struct inode *igrab(struct inode *inode);
+extern void iput(struct inode *inode);
+extern void drop_nlink(struct inode *inode);
+extern void clear_nlink(struct inode *inode);
+extern void set_nlink(struct inode *inode, unsigned int nlink);
+extern void inc_nlink(struct inode *inode);
+extern struct inode *new_inode(struct super_block *sb);
+extern void destroy_inode(struct inode* inode);
+extern void inode_init_once(struct inode *inode);
+extern int write_inode_now(struct inode *inode, int sync);
+extern void remove_inode_hash(struct inode *inode);
+extern boolean_t inode_owner_or_capable(const struct inode *inode);
+extern void unlock_new_inode(struct inode *inode);
+extern int insert_inode_locked(struct inode *inode);
+extern void i_size_write(struct inode *inode, loff_t i_size);
+extern void inode_set_flags(struct inode *inode, unsigned int flags, unsigned int mask);
+extern void mark_inode_dirty(struct inode *inode);
+extern void inode_set_iversion(struct inode *ip, uint64_t val);
+
+extern struct dentry *d_make_root(struct inode *root_inode);
+extern void d_prune_aliases(struct inode *inode);
+extern void shrink_dcache_sb(struct super_block *sb);
+
+extern boolean_t
+zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type);
+
+extern void update_pages(znode_t *zp, int64_t start, int len, objset_t *os);
+extern int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio);
+extern uid_t zfs_uid_read(struct inode *inode);
+extern gid_t zfs_gid_read(struct inode *inode);
+extern void zfs_uid_write(struct inode *inode, uid_t uid);
+extern void zfs_gid_write(struct inode *inode, gid_t gid);
+extern void truncate_setsize(struct inode *inode, loff_t newsize);
+extern int register_filesystem(struct file_system_type * fs);
+extern int unregister_filesystem(struct file_system_type * fs);
+extern void deactivate_super(struct super_block *s);
 
 
+#define atomic_inc_not_zero(v)      atomic_add_unless((v), 1, 0)
+extern int atomic_read(const atomic_t *v);
+extern void atomic_set(atomic_t *v, int i);
+extern int atomic_add_unless(atomic_t *v, int a, int u);
 
-#define register_filesystem(f)
-#define unregister_filesystem(f)
+extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
+extern struct timespec current_kernel_time(void);
+extern int timespec_compare(const struct timespec *lhs, const struct timespec *rhs);
 
-#define deactivate_super(s)
+#if !defined(HAVE_CURRENT_TIME)
+extern struct timespec current_time(struct inode *inode);
+#endif
 
-#define jiffies 0
-#define time_after(m,n) (0)
+extern struct timespec timespec_trunc(struct timespec t, unsigned gran);
+extern struct timespec current_kernel_time(void);
+
+extern int groupmember(gid_t gid, const cred_t *cr);
+extern uid_t crgetfsuid(const cred_t *cr);
+extern gid_t crgetfsgid(const cred_t *cr);
+
+extern int fls(int x);
+extern int ilog2(uint64_t n);
+
+extern boolean_t has_capability(struct task_struct *t, int cap);
+extern boolean_t capable(int cap);
 
 extern long zfsdev_ioctl(unsigned cmd, unsigned long arg);
+void schedule(void);
 
-typedef struct zpl_dir_context {
-    loff_t pos;
-} zpl_dir_context_t;
-
-#define ZPL_DIR_CONTEXT_INIT(_pos) {   \
-    .pos = _pos,                    \
-}
-
-static inline void
-inode_set_iversion(struct inode *ip, uint64_t val)
-{
-    ip->i_version = val;
-}
+extern long zfsdev_ioctl_common(uint_t, zfs_cmd_t *, int);
 
 #endif	/* _SYS_KERNEL_H */

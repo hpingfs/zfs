@@ -55,9 +55,49 @@ int ddi_copyin(const void *from, void *to, size_t len, int flags)
     memcpy(to, from, len);
     return 0;
 }
+
 int ddi_copyout(const void *from, void *to, size_t len, int flags)
 {
     memcpy(to, from, len);
     return 0;
 }
+
+int xcopyin(const void *from, void *to, size_t len)
+{
+    memcpy(to, from, len);
+    return 0;
+}
+
+int xcopyout(const void *from, void *to, size_t len)
+{
+    memcpy(to, from, len);
+    return 0;
+}
+
+int copyinstr(const void *from, void *to, size_t len, size_t *done)
+{
+	if (len == 0)
+		return (-ENAMETOOLONG);
+
+	/* XXX: Should return ENAMETOOLONG if 'strlen(from) > len' */
+
+	memset(to, 0, len);
+    if (xcopyin(from, to, len - 1) == 0) {
+        if (done) {
+            *done = 0;
+        }
+    } else {
+        if (done) {
+            *done = len - 1;
+        }
+    }
+
+	return (0);
+}
+
+boolean_t zfs_proc_is_caller(struct task_struct *t)
+{
+	return B_FALSE;
+}
+
 

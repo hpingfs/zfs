@@ -118,7 +118,7 @@ extern const char *zfs_fuid_find_by_idx(zfsvfs_t *zfsvfs, uint32_t idx);
 extern void zfs_fuid_txhold(zfsvfs_t *zfsvfs, dmu_tx_t *tx);
 extern int zfs_id_to_fuidstr(zfsvfs_t *zfsvfs, const char *domain, uid_t rid,
     char *buf, size_t len, boolean_t addok);
-#endif
+//#endif
 
 char *zfs_fuid_idx_domain(avl_tree_t *, uint32_t);
 void zfs_fuid_avl_tree_create(avl_tree_t *, avl_tree_t *);
@@ -127,6 +127,6 @@ void zfs_fuid_table_destroy(avl_tree_t *, avl_tree_t *);
 
 #ifdef	__cplusplus
 }
-//#endif
+#endif
 
 #endif	/* _SYS_FS_ZFS_FUID_H */

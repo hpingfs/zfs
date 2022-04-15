@@ -45,38 +45,14 @@ extern unsigned long totalram_pages;
 #define	MUTEX_HELD(mp)		mutex_owned(mp)
 #define	MUTEX_NOT_HELD(mp)	(!MUTEX_HELD(mp))
 
-#define	xcopyin(from, to, size)		memcpy(to, from, size)
-#define	xcopyout(from, to, size)	memcpy(to, from, size)
-
 struct task_struct {};
 
-static inline boolean_t
-zfs_proc_is_caller(struct task_struct *t)
-{
-	return B_FALSE;
-}
+int ddi_copyin(const void *from, void *to, size_t len, int flags);
+int ddi_copyout(const void *from, void *to, size_t len, int flags);
+int xcopyin(const void *from, void *to, size_t len);
+int xcopyout(const void *from, void *to, size_t len);
+int copyinstr(const void *from, void *to, size_t len, size_t *done);
 
-
-static __inline__ int
-copyinstr(const void *from, void *to, size_t len, size_t *done)
-{
-	if (len == 0)
-		return (-ENAMETOOLONG);
-
-	/* XXX: Should return ENAMETOOLONG if 'strlen(from) > len' */
-
-	memset(to, 0, len);
-    if (xcopyin(from, to, len - 1) == NULL) {
-        if (done) {
-            *done = 0;
-        }
-    } else {
-        if (done) {
-            *done = len - 1;
-        }
-    }
-
-	return (0);
-}
+boolean_t zfs_proc_is_caller(struct task_struct *t);
 
 #endif	/* _SYS_USPL_H */

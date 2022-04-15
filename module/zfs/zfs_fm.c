@@ -118,6 +118,7 @@ static avl_tree_t recent_events_tree;
 static kmutex_t recent_events_lock;
 static taskqid_t recent_events_cleaner_tqid;
 
+#ifdef _KERNEL
 /*
  * Each node is about 128 bytes so 2,000 would consume 1/4 MiB.
  *
@@ -125,6 +126,7 @@ static taskqid_t recent_events_cleaner_tqid;
  * disables duplicate detection.
  */
 static unsigned int zfs_zevent_retain_max = 2000;
+#endif
 
 /*
  * The lifespan for a recent ereport entry. The default of 15 minutes is
@@ -284,6 +286,7 @@ zfs_ereport_clear(spa_t *spa, vdev_t *vd)
 	mutex_exit(&recent_events_lock);
 }
 
+#ifdef _KERNEL
 /*
  * Check if an ereport would be a duplicate of one recently posted.
  *
@@ -670,6 +673,7 @@ zfs_ereport_start(nvlist_t **ereport_out, nvlist_t **detector_out,
 	*detector_out = detector;
 	return (B_TRUE);
 }
+#endif
 
 /* if it's <= 128 bytes, save the corruption directly */
 #define	ZFM_MAX_INLINE		(128 / sizeof (uint64_t))
@@ -703,6 +707,7 @@ typedef struct zfs_ecksum_info {
 
 } zfs_ecksum_info_t;
 
+#ifdef _KERNEL
 static void
 update_histogram(uint64_t value_arg, uint32_t *hist, uint32_t *count)
 {
@@ -984,6 +989,7 @@ annotate_ecksum(nvlist_t *ereport, zio_bad_cksum_t *info,
 	}
 	return (eip);
 }
+#endif
 //#else
 //void
 //zfs_ereport_clear(spa_t *spa, vdev_t *vd)

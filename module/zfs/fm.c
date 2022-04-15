@@ -267,16 +267,15 @@ zfs_zevent_track_duplicate(void)
 	atomic_inc_64(&erpt_kstat_data.erpt_duplicates.value.ui64);
 }
 
-static int
-zfs_zevent_minor_to_state(minor_t minor, zfs_zevent_t **ze)
-{
-// FIXME(hping)
+//static int
+//zfs_zevent_minor_to_state(minor_t minor, zfs_zevent_t **ze)
+//{
 //	*ze = zfsdev_get_state(minor, ZST_ZEVENT);
 //	if (*ze == NULL)
 //		return (SET_ERROR(EBADF));
-
-	return (0);
-}
+//
+//	return (0);
+//}
 
 zfs_file_t *
 zfs_zevent_fd_hold(int fd, minor_t *minorp, zfs_zevent_t **ze)
