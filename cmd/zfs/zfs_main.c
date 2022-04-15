@@ -128,6 +128,7 @@ static int zfs_do_touch(int argc, char **argv);
 static int zfs_do_rm(int argc, char **argv);
 static int zfs_do_read(int argc, char **argv);
 static int zfs_do_write(int argc, char **argv);
+static int zfs_do_mkdir_second(int argc, char **argv);
 
 #ifdef __FreeBSD__
 static int zfs_do_jail(int argc, char **argv);
@@ -198,6 +199,7 @@ typedef enum {
 	HELP_RM,
 	HELP_READ,
 	HELP_WRITE,
+	HELP_MKDIR_SECOND,
 } zfs_help_t;
 
 typedef struct zfs_command {
@@ -270,6 +272,7 @@ static zfs_command_t command_table[] = {
 	{ "rm",	zfs_do_rm,		HELP_RM		},
 	{ "read",	zfs_do_read,		HELP_READ		},
 	{ "write",	zfs_do_write,		HELP_WRITE	},
+	{ "mkdir-second",	zfs_do_mkdir_second,		HELP_MKDIR_SECOND		},
 
 #ifdef __FreeBSD__
 	{ "jail",	zfs_do_jail,		HELP_JAIL		},
@@ -436,7 +439,7 @@ get_usage(zfs_help_t idx)
 	case HELP_WAIT:
 		return (gettext("\twait [-t <activity>] <filesystem>\n"));
 	case HELP_LS:
-		return (gettext("\tls <filesystem>\n"));
+		return (gettext("\tls <filesystem> <path>\n"));
 	case HELP_MKDIR:
 		return (gettext("\tmkdir <filesystem> <dirname>\n"));
 	case HELP_RMDIR:
@@ -449,6 +452,8 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tread <filesystem> <filename>\n"));
 	case HELP_WRITE:
 		return (gettext("\twrite <filesystem> <filename> <data>\n"));
+	case HELP_MKDIR_SECOND:
+		return (gettext("\tmkdir-second <filesystem> <pname> <dirname>\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -8647,16 +8652,17 @@ zfs_do_ls(int argc, char **argv)
 	zfs_handle_t *zhp;
     int ret = 0;
     char *fsname = argv[1];
+    char *path = argv[2];
 	int types = ZFS_TYPE_FILESYSTEM;
 
-    printf("ls %s\n", fsname);
+    printf("ls %s/%s\n", fsname, path);
 
 
 	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
 		return (1);
 
 
-    ret = libzfs_ls_root(fsname);
+    ret = libzfs_ls_common(fsname, path);
 
 	zfs_close(zhp);
 
@@ -8798,7 +8804,28 @@ zfs_do_write(int argc, char **argv)
 	return (ret);
 }
 
+static int
+zfs_do_mkdir_second(int argc, char **argv)
+{
+	zfs_handle_t *zhp;
+    int ret = 0;
+    char *fsname = argv[1];
+    char *pname = argv[2];
+    char *dirname = argv[3];
+	int types = ZFS_TYPE_FILESYSTEM;
 
+    printf("mkdir %s/%s/%s\n", fsname, pname, dirname);
+
+	if ((zhp = zfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+
+    ret = libzfs_mkdir_second(fsname, pname, dirname);
+
+	zfs_close(zhp);
+
+	return (ret);
+}
 
 /*
  * Display version message
