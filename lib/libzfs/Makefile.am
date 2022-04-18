@@ -5,6 +5,11 @@ VPATH = \
 	$(top_srcdir)/module/zcommon \
 	$(top_srcdir)/lib/libzfs
 
+if BUILD_LINUX
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/os/linux/zfs
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/spl
+endif
+
 # Suppress unused but set variable warnings often due to ASSERTs
 AM_CFLAGS += $(NO_UNUSED_BUT_SET_VARIABLE)
 AM_CFLAGS += $(LIBCRYPTO_CFLAGS) $(ZLIB_CFLAGS)
@@ -76,7 +81,8 @@ libzfs_la_LIBADD = \
 	$(abs_top_builddir)/lib/libzfs_core/libzfs_core.la \
 	$(abs_top_builddir)/lib/libnvpair/libnvpair.la \
 	$(abs_top_builddir)/lib/libzutil/libzutil.la \
-	$(abs_top_builddir)/lib/libuutil/libuutil.la
+	$(abs_top_builddir)/lib/libuutil/libuutil.la \
+	$(abs_top_builddir)/lib/libzpool/libzpool.la
 
 libzfs_la_LIBADD += -lm $(LIBCRYPTO_LIBS) $(ZLIB_LIBS) $(LIBFETCH_LIBS) $(LTLIBINTL)
 
