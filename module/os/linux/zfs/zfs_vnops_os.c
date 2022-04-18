@@ -381,8 +381,7 @@ zfs_zrele_async(znode_t *zp)
 	struct inode *ip = ZTOI(zp);
 	objset_t *os = ITOZSB(ip)->z_os;
 
-// FIXME(hping)
-//	ASSERT(atomic_read(&ip->i_count) > 0);
+	ASSERT(atomic_read(&ip->i_count) > 0);
 	ASSERT(os != NULL);
 
 	/*
@@ -712,8 +711,8 @@ top:
 		txtype = zfs_log_create_txtype(Z_FILE, vsecp, vap);
 		if (flag & FIGNORECASE)
 			txtype |= TX_CI;
-//		zfs_log_create(zilog, tx, txtype, dzp, zp, name,
-//		    vsecp, acl_ids.z_fuidp, vap);
+		zfs_log_create(zilog, tx, txtype, dzp, zp, name,
+		    vsecp, acl_ids.z_fuidp, vap);
 		zfs_acl_ids_free(&acl_ids);
 		dmu_tx_commit(tx);
 	} else {
@@ -1115,7 +1114,7 @@ top:
 	txtype = TX_REMOVE;
 	if (flags & FIGNORECASE)
 		txtype |= TX_CI;
-//	zfs_log_remove(zilog, tx, txtype, dzp, name, obj, unlinked);
+	zfs_log_remove(zilog, tx, txtype, dzp, name, obj, unlinked);
 
 	dmu_tx_commit(tx);
 out:
@@ -1313,9 +1312,8 @@ top:
 	txtype = zfs_log_create_txtype(Z_DIR, vsecp, vap);
 	if (flags & FIGNORECASE)
 		txtype |= TX_CI;
-// FIXME(hping)
-//	zfs_log_create(zilog, tx, txtype, dzp, zp, dirname, vsecp,
-//	    acl_ids.z_fuidp, vap);
+	zfs_log_create(zilog, tx, txtype, dzp, zp, dirname, vsecp,
+	    acl_ids.z_fuidp, vap);
 
 out:
 	zfs_acl_ids_free(&acl_ids);
@@ -1445,9 +1443,8 @@ top:
 		uint64_t txtype = TX_RMDIR;
 		if (flags & FIGNORECASE)
 			txtype |= TX_CI;
-// FIXME(hping)
-//		zfs_log_remove(zilog, tx, txtype, dzp, name, ZFS_NO_OBJECT,
-//		    B_FALSE);
+		zfs_log_remove(zilog, tx, txtype, dzp, name, ZFS_NO_OBJECT,
+		    B_FALSE);
 	}
 
 	dmu_tx_commit(tx);
@@ -1492,7 +1489,7 @@ int zfs_readdir_common(char* fsname, char* path) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1578,7 +1575,7 @@ int zfs_mkdir_root(char* fsname, char* dirname) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1659,7 +1656,7 @@ int zfs_rmdir_root(char* fsname, char* dirname) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1733,7 +1730,7 @@ int zfs_create_root(char* fsname, char* filename) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1814,7 +1811,7 @@ int zfs_remove_root(char* fsname, char* filename) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1888,7 +1885,7 @@ int zfs_rw_root(char* fsname, char* name, const struct iovec *iov, int rw) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 
@@ -1983,7 +1980,7 @@ int zfs_mkdir_second(char* fsname, char* parname, char* dirname) {
 
     zfsvfs->z_sb = sb;
 
-    error = zfsvfs_setup(zfsvfs, B_FALSE);
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error)
         goto out;
 

@@ -1411,9 +1411,16 @@ zfsvfs_update_fromname(const char *oldname, const char *newname)
 	(void) oldname, (void) newname;
 }
 
+void __iget(struct inode* inode)
+{
+    printf("%s: %ld\n", __func__, inode->i_ino);
+    atomic_inc_32(&inode->i_count.counter);
+}
+
 struct inode *igrab(struct inode *inode)
 {
     printf("%s: %ld\n", __func__, inode->i_ino);
+    __iget(inode);
     return inode;
 //    spin_lock(&inode->i_lock);
 //    if (!(inode->i_state & (I_FREEING|I_WILL_FREE))) {
@@ -1442,10 +1449,14 @@ struct inode *igrab(struct inode *inode)
  */
 void iput(struct inode *inode)
 {
-    printf("%s: %ld\n", __func__, inode->i_ino);
+    // FIXME(hping)
     if (inode) {
-        zfs_inactive(inode);
-        destroy_inode(inode);
+        printf("%s: %ld\n", __func__, inode->i_ino);
+        atomic_dec_32(&inode->i_count.counter);
+        if (atomic_read(&inode->i_count.counter) == 0) {
+            zfs_inactive(inode);
+            destroy_inode(inode);
+        }
     }
 }
 
@@ -1662,6 +1673,7 @@ void unlock_new_inode(struct inode *inode)
 int insert_inode_locked(struct inode *inode)
 {
     printf("%s: %ld\n", __func__, inode->i_ino);
+    __iget(inode);
     return 0;
 }
 

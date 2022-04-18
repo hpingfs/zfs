@@ -25,7 +25,7 @@
 #include <sys/zfs_context.h>
 #include <sys/uspl.h>
 
-#define WARN_ON(s) ASSERT(s)
+#define WARN_ON(s) ASSERT(!(s))
 
 struct spinlock_t;
 
