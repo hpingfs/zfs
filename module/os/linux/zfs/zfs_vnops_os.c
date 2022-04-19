@@ -1478,8 +1478,7 @@ int zfs_readdir_common(char* fsname, char* path) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        return error;
+    if (error) return error;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1490,27 +1489,23 @@ int zfs_readdir_common(char* fsname, char* path) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     if (strlen(path) == 1 && path[0] == '/') {
         dir_inode = root_inode;
     } else {
         error = zfs_lookup(ITOZ(root_inode), path, &pzp, 0, NULL, NULL, NULL);
-        if (error)
-            goto out;
+        if (error) goto out;
         dir_inode = ZTOI(pzp);
     }
 
 	zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(0);
 
     error = zfs_readdir(dir_inode, &ctx, NULL);
-    if (error)
-        return error;
+    if (error) return error;
 
 	VERIFY(zfsvfs_teardown(zfsvfs, B_FALSE) == 0);
 	os = zfsvfs->z_os;
@@ -1564,8 +1559,7 @@ int zfs_mkdir_root(char* fsname, char* dirname) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1576,19 +1570,16 @@ int zfs_mkdir_root(char* fsname, char* dirname) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vap = kmem_zalloc(sizeof (vattr_t), KM_SLEEP);
 	uzfs_vap_init(vap, root_inode, S_IFDIR, NULL);
 
     error = zfs_mkdir(ITOZ(root_inode), dirname, vap, &zp, NULL, 0, NULL);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 out:
     if (zp) {
@@ -1645,8 +1636,7 @@ int zfs_rmdir_root(char* fsname, char* dirname) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1657,16 +1647,13 @@ int zfs_rmdir_root(char* fsname, char* dirname) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_rmdir(ITOZ(root_inode), dirname, NULL, NULL, 0);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 out:
     if (root_inode) {
@@ -1719,8 +1706,7 @@ int zfs_create_root(char* fsname, char* filename) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1731,19 +1717,16 @@ int zfs_create_root(char* fsname, char* filename) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vap = kmem_zalloc(sizeof (vattr_t), KM_SLEEP);
 	uzfs_vap_init(vap, root_inode, mode, NULL);
 
     error = zfs_create(ITOZ(root_inode), filename, vap, 0, mode, &zp, NULL, 0, NULL);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 out:
     if (zp) {
@@ -1800,8 +1783,7 @@ int zfs_remove_root(char* fsname, char* filename) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1812,16 +1794,13 @@ int zfs_remove_root(char* fsname, char* filename) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_remove(ITOZ(root_inode), filename, NULL, 0);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 out:
     if (root_inode) {
@@ -1869,13 +1848,11 @@ int zfs_rw_root(char* fsname, char* name, const struct iovec *iov, int rw) {
 	struct inode *root_inode = NULL;
     struct super_block* sb = NULL;
     int error = 0;
-    umode_t mode = S_IFREG;
 
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1886,16 +1863,13 @@ int zfs_rw_root(char* fsname, char* name, const struct iovec *iov, int rw) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_lookup(ITOZ(root_inode), name, &zp, 0, NULL, NULL, NULL);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     if (!zp) {
         printf("%s/%s not exist\n", fsname, name);
@@ -1969,8 +1943,7 @@ int zfs_mkdir_second(char* fsname, char* parname, char* dirname) {
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
     error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
@@ -1981,23 +1954,19 @@ int zfs_mkdir_second(char* fsname, char* parname, char* dirname) {
     zfsvfs->z_sb = sb;
 
     error = zfsvfs_setup(zfsvfs, B_TRUE);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_root(zfsvfs, &root_inode);
-    if (error)
-        goto out;
+    if (error) goto out;
 
     error = zfs_lookup(ITOZ(root_inode), parname, &pzp, 0, NULL, NULL, NULL);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 	vap = kmem_zalloc(sizeof (vattr_t), KM_SLEEP);
 	uzfs_vap_init(vap, root_inode, S_IFDIR, NULL);
 
     error = zfs_mkdir(pzp, dirname, vap, &zp, NULL, 0, NULL);
-    if (error)
-        goto out;
+    if (error) goto out;
 
 out:
     if (zp) {

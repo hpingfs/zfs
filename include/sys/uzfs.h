@@ -23,13 +23,33 @@
 #define	_SYS_UZFS_H
 
 #include <sys/zfs_context.h>
+#include <sys/vnode.h>
 
-#define zpl_super_operations uzfs_super_operations
-#define zpl_export_operations uzfs_export_operations
-#define zpl_dentry_operations uzfs_dentry_operations
-#define zpl_xattr_handlers uzfs_xattr_handlers
+#define zpl_fs_type                            uzfs_fs_type
+#define zpl_super_operations                   uzfs_super_operations
+#define zpl_export_operations                  uzfs_export_operations
+#define zpl_dentry_operations                  uzfs_dentry_operations
+
+#define zpl_file_operations                    uzfs_file_operations
+#define zpl_dir_file_operations                uzfs_dir_file_operations
+#define zpl_address_space_operations           uzfs_address_space_operations
+
+#define zpl_inode_operations                   uzfs_inode_operations
+#define zpl_dir_inode_operations               uzfs_dir_inode_operations
+#define zpl_symlink_inode_operations           uzfs_symlink_inode_operations
+#define zpl_special_inode_operations           uzfs_special_inode_operations
+
+// zfs_ctldir
+#define zpl_fops_root                          uzfs_fops_root
+#define zpl_ops_root                           uzfs_ops_root
+#define zpl_fops_snapdir                       uzfs_fops_snapdir
+#define zpl_ops_snapdir                        uzfs_ops_snapdir
+#define zpl_fops_shares                        uzfs_fops_shares
+#define zpl_ops_shares                         uzfs_ops_shares
 
 extern void zpl_prune_sb(int64_t nr_to_scan, void *arg);
+
+extern void uzfs_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr);
 
 #define zfs_uio_fault_disable(u, set)
 
@@ -42,5 +62,12 @@ extern void zpl_prune_sb(int64_t nr_to_scan, void *arg);
 #endif
 
 #define zvol_tag(zv) (NULL)
+
+typedef struct vfs vfs_t;
+extern int zfsvfs_parse_options(char *mntopts, vfs_t **vfsp);
+
+struct super_block;
+int zpl_bdi_setup(struct super_block *sb, char *name);
+void zpl_bdi_destroy(struct super_block *sb);
 
 #endif	/* _SYS_UZFS_H */

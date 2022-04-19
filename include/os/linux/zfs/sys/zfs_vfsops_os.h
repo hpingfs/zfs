@@ -245,10 +245,6 @@ extern void zfsvfs_free(zfsvfs_t *zfsvfs);
 extern int zfs_check_global_label(const char *dsname, const char *hexsl);
 
 extern boolean_t zfs_is_readonly(zfsvfs_t *zfsvfs);
-extern int zfs_domount(struct super_block *sb, zfs_mnt_t *zm, int silent);
-extern void zfs_preumount(struct super_block *sb);
-extern int zfs_umount(struct super_block *sb);
-extern int zfs_remount(struct super_block *sb, int *flags, zfs_mnt_t *zm);
 extern int zfs_statvfs(struct inode *ip, struct kstatfs *statp);
 extern int zfs_vget(struct super_block *sb, struct inode **ipp, fid_t *fidp);
 extern int zfs_prune(struct super_block *sb, unsigned long nr_to_scan,
@@ -256,6 +252,23 @@ extern int zfs_prune(struct super_block *sb, unsigned long nr_to_scan,
 extern int zfs_get_temporary_prop(dsl_dataset_t *ds, zfs_prop_t zfs_prop,
     uint64_t *val, char *setpoint);
 extern int zfs_root(zfsvfs_t *zfsvfs, struct inode **ipp);
+
+// used by zfs_end_fs
+extern int zfs_umount(struct super_block *sb);
+
+extern int zfs_readdir_common(char* fsname, char* path);
+extern int zfs_mkdir_root(char* fsname, char* dirname);
+extern int zfs_rmdir_root(char* fsname, char* dirname);
+extern int zfs_create_root(char* fsname, char* filename);
+extern int zfs_remove_root(char* fsname, char* filename);
+extern int zfs_rw_root(char* fsname, char* name, const struct iovec *iov, int rw);
+extern int zfs_mkdir_second(char* fsname, char* parname, char* dirname);
+
+#ifdef _KERNEL
+extern int zfs_domount(struct super_block *sb, zfs_mnt_t *zm, int silent);
+extern void zfs_preumount(struct super_block *sb);
+extern int zfs_remount(struct super_block *sb, int *flags, zfs_mnt_t *zm);
+#endif
 
 #ifdef	__cplusplus
 }

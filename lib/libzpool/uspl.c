@@ -95,7 +95,7 @@ int copyinstr(const void *from, void *to, size_t len, size_t *done)
 	return (0);
 }
 
-boolean_t zfs_proc_is_caller(struct task_struct *t)
+boolean_t zfs_proc_is_caller(proc_t *t)
 {
 	return B_FALSE;
 }

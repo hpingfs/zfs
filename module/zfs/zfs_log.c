@@ -564,10 +564,9 @@ zfs_log_write(zilog_t *zilog, dmu_tx_t *tx, int txtype,
 	else
 		write_state = WR_NEED_COPY;
 
-// FIXME(hping) remove comment after implementing lib init
-//	if ((fsync_cnt = (uintptr_t)tsd_get(zfs_fsyncer_key)) != 0) {
-//		(void) tsd_set(zfs_fsyncer_key, (void *)(fsync_cnt - 1));
-//	}
+	if ((fsync_cnt = (uintptr_t)tsd_get(zfs_fsyncer_key)) != 0) {
+		(void) tsd_set(zfs_fsyncer_key, (void *)(fsync_cnt - 1));
+	}
 
 	(void) sa_lookup(zp->z_sa_hdl, SA_ZPL_GEN(ZTOZSB(zp)), &gen,
 	    sizeof (gen));

@@ -63,8 +63,7 @@ zfs_fsync(znode_t *zp, int syncflag, cred_t *cr)
 {
 	zfsvfs_t *zfsvfs = ZTOZSB(zp);
 
-// FIXME(hping) fixme after add lib init
-//	(void) tsd_set(zfs_fsyncer_key, (void *)zfs_fsync_sync_cnt);
+	(void) tsd_set(zfs_fsyncer_key, (void *)zfs_fsync_sync_cnt);
 
 	if (zfsvfs->z_os->os_sync != ZFS_SYNC_DISABLED) {
 		ZFS_ENTER(zfsvfs);
@@ -72,7 +71,7 @@ zfs_fsync(znode_t *zp, int syncflag, cred_t *cr)
 		zil_commit(zfsvfs->z_log, zp->z_id);
 		ZFS_EXIT(zfsvfs);
 	}
-//	tsd_set(zfs_fsyncer_key, NULL);
+	tsd_set(zfs_fsyncer_key, NULL);
 
 	return (0);
 }
@@ -681,9 +680,8 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 			/* Avoid clobbering EFAULT. */
 			error = error1;
 
-// FIXME(hping)
-//		zfs_log_write(zilog, tx, TX_WRITE, zp, woff, tx_bytes, ioflag,
-//		    NULL, NULL);
+		zfs_log_write(zilog, tx, TX_WRITE, zp, woff, tx_bytes, ioflag,
+		    NULL, NULL);
 		dmu_tx_commit(tx);
 
 		if (error != 0)

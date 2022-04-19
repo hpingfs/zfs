@@ -6265,8 +6265,8 @@ zfs_ioc_get_holds(const char *snapname, nvlist_t *args, nvlist_t *outnvl)
 static int
 zfs_ioc_ls_common(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *path = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *path = zc->zc_value;
 	return zfs_readdir_common(fsname, path);
 }
 
@@ -6274,8 +6274,8 @@ zfs_ioc_ls_common(zfs_cmd_t *zc)
 static int
 zfs_ioc_mkdir_root(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *dirname = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *dirname = zc->zc_value;
 	return zfs_mkdir_root(fsname, dirname);
 }
 
@@ -6283,8 +6283,8 @@ zfs_ioc_mkdir_root(zfs_cmd_t *zc)
 static int
 zfs_ioc_rmdir_root(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *dirname = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *dirname = zc->zc_value;
 	return zfs_rmdir_root(fsname, dirname);
 }
 
@@ -6292,8 +6292,8 @@ zfs_ioc_rmdir_root(zfs_cmd_t *zc)
 static int
 zfs_ioc_create_root(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *filename = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *filename = zc->zc_value;
 	return zfs_create_root(fsname, filename);
 }
 
@@ -6301,8 +6301,8 @@ zfs_ioc_create_root(zfs_cmd_t *zc)
 static int
 zfs_ioc_remove_root(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *filename = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *filename = zc->zc_value;
 	return zfs_remove_root(fsname, filename);
 }
 
@@ -6310,10 +6310,10 @@ zfs_ioc_remove_root(zfs_cmd_t *zc)
 static int
 zfs_ioc_rw_root(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *filename = &zc->zc_value;
+    char *fsname = zc->zc_name;
+    char *filename = zc->zc_value;
     struct iovec iov;
-    iov.iov_base = &zc->zc_string;
+    iov.iov_base = zc->zc_string;
     int rw = zc->zc_flags; // read: 0; write: 1
     if (rw) {
         iov.iov_len = strlen(zc->zc_string);
@@ -6328,9 +6328,9 @@ zfs_ioc_rw_root(zfs_cmd_t *zc)
 static int
 zfs_ioc_mkdir_second(zfs_cmd_t *zc)
 {
-    char *fsname = &zc->zc_name;
-    char *pname = &zc->zc_value;
-    char *dirname = &zc->zc_string;
+    char *fsname = zc->zc_name;
+    char *pname = zc->zc_value;
+    char *dirname = zc->zc_string;
 	return zfs_mkdir_second(fsname, pname, dirname);
 }
 
@@ -7767,17 +7767,14 @@ zfs_kmod_init(void)
 	tsd_create(&zfs_allow_log_key, zfs_allow_log_destroy);
 
 	return (0);
+#ifdef _KERNEL
 out:
 	zfs_fini();
-#ifdef _KERNEL
 	spa_fini();
-#else
-    kernel_fini();
-#endif
-
 	zvol_fini();
 
 	return (error);
+#endif
 }
 
 void

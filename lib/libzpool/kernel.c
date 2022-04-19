@@ -1411,7 +1411,37 @@ zfsvfs_update_fromname(const char *oldname, const char *newname)
 	(void) oldname, (void) newname;
 }
 
-void __iget(struct inode* inode)
+// hping start
+
+struct file_system_type uzfs_fs_type = {};
+const struct super_operations uzfs_super_operations = {};
+const struct export_operations uzfs_export_operations = {};
+const struct dentry_operations uzfs_dentry_operations = {};
+const struct inode_operations uzfs_inode_operations = {};
+const struct inode_operations uzfs_dir_inode_operations = {};
+const struct inode_operations uzfs_symlink_inode_operations = {};
+const struct inode_operations uzfs_special_inode_operations = {};
+const struct file_operations uzfs_file_operations = {};
+const struct file_operations uzfs_dir_file_operations = {};
+const struct address_space_operations uzfs_address_space_operations = {};
+
+// zfs_ctldir
+const struct file_operations uzfs_fops_root = {};
+const struct inode_operations uzfs_ops_root = {};
+const struct file_operations uzfs_fops_snapdir = {};
+const struct inode_operations uzfs_ops_snapdir = {};
+const struct file_operations uzfs_fops_shares = {};
+const struct inode_operations uzfs_ops_shares = {};
+const struct file_operations simple_dir_operations = {};
+const struct inode_operations simple_dir_inode_operations = {};
+
+int zfs_umount(struct super_block *sb)
+{
+    printf("%s\n", __func__);
+    return 0;
+}
+
+static void __iget(struct inode* inode)
 {
     printf("%s: %ld\n", __func__, inode->i_ino);
     atomic_inc_32(&inode->i_count.counter);
@@ -1453,7 +1483,7 @@ void iput(struct inode *inode)
     if (inode) {
         printf("%s: %ld\n", __func__, inode->i_ino);
         atomic_dec_32(&inode->i_count.counter);
-        if (atomic_read(&inode->i_count.counter) == 0) {
+        if (atomic_read(&inode->i_count) == 0) {
             zfs_inactive(inode);
             destroy_inode(inode);
         }
@@ -2025,7 +2055,7 @@ int ilog2(uint64_t n) { return (int)log2(n); }
  *
  * Note that this does not set PF_SUPERPRIV on the task.
  */
-boolean_t has_capability(struct task_struct *t, int cap)
+boolean_t has_capability(proc_t *t, int cap)
 {
     return B_FALSE;
 //    return has_ns_capability(t, &init_user_ns, cap);
@@ -2074,4 +2104,54 @@ out:
 
 void schedule() {
     printf("%s\n", __func__);
+}
+
+void init_special_inode(struct inode *inode, umode_t mode, dev_t dev)
+{
+    printf("%s\n", __func__);
+}
+
+void truncate_inode_pages_range(struct address_space *space, loff_t lstart, loff_t lend)
+{
+    printf("%s\n", __func__);
+}
+
+struct inode *ilookup(struct super_block *sb, unsigned long ino)
+{
+    printf("%s, ino: %ld\n", __func__, ino);
+    return NULL;
+}
+
+struct dentry * d_obtain_alias(struct inode *inode)
+{
+    printf("%s\n", __func__);
+    return NULL;
+}
+
+boolean_t d_mountpoint(struct dentry *dentry)
+{
+    printf("%s\n", __func__);
+    return B_TRUE;
+}
+
+void dput(struct dentry *dentry)
+{
+    printf("%s\n", __func__);
+}
+
+int zfsctl_snapshot_unmount(const char *snapname, int flags)
+{
+    printf("%s, snapname: %s\n", __func__, snapname);
+    return 0;
+}
+
+int kern_path(const char *name, unsigned int flags, struct path *path)
+{
+    printf("%s, name: %s\n", __func__, name);
+    return 0;
+//    struct nameidata nd;
+//    int res = do_path_lookup(AT_FDCWD, name, flags, &nd);
+//    if (!res)
+//        *path = nd.path;
+//    return res;
 }

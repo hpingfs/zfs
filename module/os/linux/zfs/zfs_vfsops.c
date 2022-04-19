@@ -1099,7 +1099,7 @@ zfs_statvfs(struct inode *ip, struct kstatfs *statp)
 	dmu_objset_space(zfsvfs->z_os,
 	    &refdbytes, &availbytes, &usedobjs, &availobjs);
 
-	uint64_t fsid = dmu_objset_fsid_guid(zfsvfs->z_os);
+//	uint64_t fsid = dmu_objset_fsid_guid(zfsvfs->z_os);
 	/*
 	 * The underlying storage pool actually uses multiple block
 	 * size.  Under Solaris frsize (fragment size) is reported as
@@ -1243,63 +1243,62 @@ int
 zfs_prune(struct super_block *sb, unsigned long nr_to_scan, int *objects)
 {
     return 0;
-// FIXME(hping)
-//	zfsvfs_t *zfsvfs = sb->s_fs_info;
-//	int error = 0;
-//	struct shrinker *shrinker = &sb->s_shrink;
-//	struct shrink_control sc = {
-//		.nr_to_scan = nr_to_scan,
-//		.gfp_mask = GFP_KERNEL,
-//	};
-//
-//	ZFS_ENTER(zfsvfs);
-//
-//#if defined(HAVE_SPLIT_SHRINKER_CALLBACK) && \
-//	defined(SHRINK_CONTROL_HAS_NID) && \
-//	defined(SHRINKER_NUMA_AWARE)
-//	if (sb->s_shrink.flags & SHRINKER_NUMA_AWARE) {
-//		*objects = 0;
-//		for_each_online_node(sc.nid) {
-//			*objects += (*shrinker->scan_objects)(shrinker, &sc);
-//			/*
-//			 * reset sc.nr_to_scan, modified by
-//			 * scan_objects == super_cache_scan
-//			 */
-//			sc.nr_to_scan = nr_to_scan;
-//		}
-//	} else {
-//			*objects = (*shrinker->scan_objects)(shrinker, &sc);
-//	}
-//
-//#elif defined(HAVE_SPLIT_SHRINKER_CALLBACK)
-//	*objects = (*shrinker->scan_objects)(shrinker, &sc);
-//#elif defined(HAVE_SINGLE_SHRINKER_CALLBACK)
-//	*objects = (*shrinker->shrink)(shrinker, &sc);
-//#elif defined(HAVE_D_PRUNE_ALIASES)
-//#define	D_PRUNE_ALIASES_IS_DEFAULT
-//	*objects = zfs_prune_aliases(zfsvfs, nr_to_scan);
-//#else
-//#error "No available dentry and inode cache pruning mechanism."
-//#endif
-//
-//#if defined(HAVE_D_PRUNE_ALIASES) && !defined(D_PRUNE_ALIASES_IS_DEFAULT)
-//#undef	D_PRUNE_ALIASES_IS_DEFAULT
-//	/*
-//	 * Fall back to zfs_prune_aliases if the kernel's per-superblock
-//	 * shrinker couldn't free anything, possibly due to the inodes being
-//	 * allocated in a different memcg.
-//	 */
-//	if (*objects == 0)
-//		*objects = zfs_prune_aliases(zfsvfs, nr_to_scan);
-//#endif
-//
-//	ZFS_EXIT(zfsvfs);
-//
-//	dprintf_ds(zfsvfs->z_os->os_dsl_dataset,
-//	    "pruning, nr_to_scan=%lu objects=%d error=%d\n",
-//	    nr_to_scan, *objects, error);
-//
-//	return (error);
+	zfsvfs_t *zfsvfs = sb->s_fs_info;
+	int error = 0;
+	struct shrinker *shrinker = &sb->s_shrink;
+	struct shrink_control sc = {
+		.nr_to_scan = nr_to_scan,
+		.gfp_mask = GFP_KERNEL,
+	};
+
+	ZFS_ENTER(zfsvfs);
+
+#if defined(HAVE_SPLIT_SHRINKER_CALLBACK) && \
+	defined(SHRINK_CONTROL_HAS_NID) && \
+	defined(SHRINKER_NUMA_AWARE)
+	if (sb->s_shrink.flags & SHRINKER_NUMA_AWARE) {
+		*objects = 0;
+		for_each_online_node(sc.nid) {
+			*objects += (*shrinker->scan_objects)(shrinker, &sc);
+			/*
+			 * reset sc.nr_to_scan, modified by
+			 * scan_objects == super_cache_scan
+			 */
+			sc.nr_to_scan = nr_to_scan;
+		}
+	} else {
+			*objects = (*shrinker->scan_objects)(shrinker, &sc);
+	}
+
+#elif defined(HAVE_SPLIT_SHRINKER_CALLBACK)
+	*objects = (*shrinker->scan_objects)(shrinker, &sc);
+#elif defined(HAVE_SINGLE_SHRINKER_CALLBACK)
+	*objects = (*shrinker->shrink)(shrinker, &sc);
+#elif defined(HAVE_D_PRUNE_ALIASES)
+#define	D_PRUNE_ALIASES_IS_DEFAULT
+	*objects = zfs_prune_aliases(zfsvfs, nr_to_scan);
+#else
+#error "No available dentry and inode cache pruning mechanism."
+#endif
+
+#if defined(HAVE_D_PRUNE_ALIASES) && !defined(D_PRUNE_ALIASES_IS_DEFAULT)
+#undef	D_PRUNE_ALIASES_IS_DEFAULT
+	/*
+	 * Fall back to zfs_prune_aliases if the kernel's per-superblock
+	 * shrinker couldn't free anything, possibly due to the inodes being
+	 * allocated in a different memcg.
+	 */
+	if (*objects == 0)
+		*objects = zfs_prune_aliases(zfsvfs, nr_to_scan);
+#endif
+
+	ZFS_EXIT(zfsvfs);
+
+	dprintf_ds(zfsvfs->z_os->os_dsl_dataset,
+	    "pruning, nr_to_scan=%lu objects=%d error=%d\n",
+	    nr_to_scan, *objects, error);
+
+	return (error);
 }
 
 /*
@@ -1454,6 +1453,7 @@ zfsvfs_teardown(zfsvfs_t *zfsvfs, boolean_t unmounting)
 atomic_long_t zfs_bdi_seq = ATOMIC_LONG_INIT(0);
 #endif
 
+#ifdef _KERNEL
 int
 zfs_domount(struct super_block *sb, zfs_mnt_t *zm, int silent)
 {
@@ -1676,6 +1676,8 @@ zfs_remount(struct super_block *sb, int *flags, zfs_mnt_t *zm)
 
 	return (error);
 }
+
+#endif
 
 int
 zfs_vget(struct super_block *sb, struct inode **ipp, fid_t *fidp)

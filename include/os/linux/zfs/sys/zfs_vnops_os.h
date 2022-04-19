@@ -88,6 +88,9 @@ extern int zfs_fid(struct inode *ip, fid_t *fidp);
 extern int zfs_dirty_inode(struct inode *ip, int flags);
 extern void zfs_zrele_async(znode_t *zp);
 
+extern int zfsvfs_setup(zfsvfs_t *zfsvfs, boolean_t mounting);
+extern int zfsvfs_teardown(zfsvfs_t *zfsvfs, boolean_t unmounting);
+
 #ifdef _KERNEL
 extern int zfs_getpage(struct inode *ip, struct page *pl[], int nr_pages);
 extern int zfs_putpage(struct inode *ip, struct page *pp,

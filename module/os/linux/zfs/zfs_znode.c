@@ -352,7 +352,6 @@ zfs_znode_sa_init(zfsvfs_t *zfsvfs, znode_t *zp,
 void
 zfs_znode_dmu_fini(znode_t *zp)
 {
-// FIXME(hping)
 	ASSERT(zfs_znode_held(ZTOZSB(zp), zp->z_id) || zp->z_unlinked ||
 	    RW_WRITE_HELD(&ZTOZSB(zp)->z_teardown_inactive_lock));
 
@@ -406,51 +405,50 @@ zfs_inode_destroy(struct inode *ip)
 static void
 zfs_inode_set_ops(zfsvfs_t *zfsvfs, struct inode *ip)
 {
-// FIXME(hping)
-//	uint64_t rdev = 0;
-//
-//	switch (ip->i_mode & S_IFMT) {
-//	case S_IFREG:
-//		ip->i_op = &zpl_inode_operations;
-//		ip->i_fop = &zpl_file_operations;
-//		ip->i_mapping->a_ops = &zpl_address_space_operations;
-//		break;
-//
-//	case S_IFDIR:
-//		ip->i_op = &zpl_dir_inode_operations;
-//		ip->i_fop = &zpl_dir_file_operations;
-//		ITOZ(ip)->z_zn_prefetch = B_TRUE;
-//		break;
-//
-//	case S_IFLNK:
-//		ip->i_op = &zpl_symlink_inode_operations;
-//		break;
-//
-//	/*
-//	 * rdev is only stored in a SA only for device files.
-//	 */
-//	case S_IFCHR:
-//	case S_IFBLK:
-//		(void) sa_lookup(ITOZ(ip)->z_sa_hdl, SA_ZPL_RDEV(zfsvfs), &rdev,
-//		    sizeof (rdev));
-//		fallthrough;
-//	case S_IFIFO:
-//	case S_IFSOCK:
-//		init_special_inode(ip, ip->i_mode, rdev);
-//		ip->i_op = &zpl_special_inode_operations;
-//		break;
-//
-//	default:
-//		zfs_panic_recover("inode %llu has invalid mode: 0x%x\n",
-//		    (u_longlong_t)ip->i_ino, ip->i_mode);
-//
-//		/* Assume the inode is a file and attempt to continue */
-//		ip->i_mode = S_IFREG | 0644;
-//		ip->i_op = &zpl_inode_operations;
-//		ip->i_fop = &zpl_file_operations;
-//		ip->i_mapping->a_ops = &zpl_address_space_operations;
-//		break;
-//	}
+	uint64_t rdev = 0;
+
+	switch (ip->i_mode & S_IFMT) {
+	case S_IFREG:
+		ip->i_op = &zpl_inode_operations;
+		ip->i_fop = &zpl_file_operations;
+		ip->i_mapping->a_ops = &zpl_address_space_operations;
+		break;
+
+	case S_IFDIR:
+		ip->i_op = &zpl_dir_inode_operations;
+		ip->i_fop = &zpl_dir_file_operations;
+		ITOZ(ip)->z_zn_prefetch = B_TRUE;
+		break;
+
+	case S_IFLNK:
+		ip->i_op = &zpl_symlink_inode_operations;
+		break;
+
+	/*
+	 * rdev is only stored in a SA only for device files.
+	 */
+	case S_IFCHR:
+	case S_IFBLK:
+		(void) sa_lookup(ITOZ(ip)->z_sa_hdl, SA_ZPL_RDEV(zfsvfs), &rdev,
+		    sizeof (rdev));
+		fallthrough;
+	case S_IFIFO:
+	case S_IFSOCK:
+		init_special_inode(ip, ip->i_mode, rdev);
+		ip->i_op = &zpl_special_inode_operations;
+		break;
+
+	default:
+		zfs_panic_recover("inode %llu has invalid mode: 0x%x\n",
+		    (u_longlong_t)ip->i_ino, ip->i_mode);
+
+		/* Assume the inode is a file and attempt to continue */
+		ip->i_mode = S_IFREG | 0644;
+		ip->i_op = &zpl_inode_operations;
+		ip->i_fop = &zpl_file_operations;
+		ip->i_mapping->a_ops = &zpl_address_space_operations;
+		break;
+	}
 }
 //
 static void
@@ -1635,44 +1633,43 @@ zfs_free_range(znode_t *zp, uint64_t off, uint64_t len)
 	 * Zero partial page cache entries.  This must be done under a
 	 * range lock in order to keep the ARC and page cache in sync.
 	 */
-// FIXME(hping) do we need it?
-//	if (zp->z_is_mapped) {
-//		loff_t first_page, last_page, page_len;
-//		loff_t first_page_offset, last_page_offset;
-//
-//		/* first possible full page in hole */
-//		first_page = (off + PAGE_SIZE - 1) >> PAGE_SHIFT;
-//		/* last page of hole */
-//		last_page = (off + len) >> PAGE_SHIFT;
-//
-//		/* offset of first_page */
-//		first_page_offset = first_page << PAGE_SHIFT;
-//		/* offset of last_page */
-//		last_page_offset = last_page << PAGE_SHIFT;
-//
-//		/* truncate whole pages */
-//		if (last_page_offset > first_page_offset) {
-//			truncate_inode_pages_range(ZTOI(zp)->i_mapping,
-//			    first_page_offset, last_page_offset - 1);
-//		}
-//
-//		/* truncate sub-page ranges */
-//		if (first_page > last_page) {
-//			/* entire punched area within a single page */
-//			zfs_zero_partial_page(zp, off, len);
-//		} else {
-//			/* beginning of punched area at the end of a page */
-//			page_len  = first_page_offset - off;
-//			if (page_len > 0)
-//				zfs_zero_partial_page(zp, off, page_len);
-//
-//			/* end of punched area at the beginning of a page */
-//			page_len = off + len - last_page_offset;
-//			if (page_len > 0)
-//				zfs_zero_partial_page(zp, last_page_offset,
-//				    page_len);
-//		}
-//	}
+	if (zp->z_is_mapped) {
+		loff_t first_page, last_page, page_len;
+		loff_t first_page_offset, last_page_offset;
+
+		/* first possible full page in hole */
+		first_page = (off + PAGE_SIZE - 1) >> PAGE_SHIFT;
+		/* last page of hole */
+		last_page = (off + len) >> PAGE_SHIFT;
+
+		/* offset of first_page */
+		first_page_offset = first_page << PAGE_SHIFT;
+		/* offset of last_page */
+		last_page_offset = last_page << PAGE_SHIFT;
+
+		/* truncate whole pages */
+		if (last_page_offset > first_page_offset) {
+			truncate_inode_pages_range(ZTOI(zp)->i_mapping,
+			    first_page_offset, last_page_offset - 1);
+		}
+
+		/* truncate sub-page ranges */
+		if (first_page > last_page) {
+			/* entire punched area within a single page */
+			zfs_zero_partial_page(zp, off, len);
+		} else {
+			/* beginning of punched area at the end of a page */
+			page_len  = first_page_offset - off;
+			if (page_len > 0)
+				zfs_zero_partial_page(zp, off, page_len);
+
+			/* end of punched area at the beginning of a page */
+			page_len = off + len - last_page_offset;
+			if (page_len > 0)
+				zfs_zero_partial_page(zp, last_page_offset,
+				    page_len);
+		}
+	}
 	zfs_rangelock_exit(lr);
 
 	return (error);

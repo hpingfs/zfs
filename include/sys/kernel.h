@@ -24,22 +24,59 @@
 
 #include <sys/zfs_context.h>
 #include <sys/uspl.h>
+#include <sys/mount.h>
+#include <sys/gfp.h>
 
 #define WARN_ON(s) ASSERT(!(s))
 
 struct spinlock_t;
 
-struct file_system_type {};
-struct file_system_type zpl_fs_type;
+#define IS_ERR(ptr) (B_FALSE)
+
+#define LOOKUP_FOLLOW       0x0001
+#define LOOKUP_DIRECTORY    0x0002
+
+#define u32 __u32
+typedef unsigned int __u32;
 
 typedef struct znode znode_t;
 typedef struct objset objset_t;
 typedef struct zfs_cmd zfs_cmd_t;
 
-const struct super_operations uzfs_super_operations;
-const struct export_operations uzfs_export_operations;
-const struct dentry_operations uzfs_dentry_operations;
-const struct xattr_handler *uzfs_xattr_handlers;
+struct path;
+struct user_namespace {};
+
+struct file_system_type {};
+struct super_operations {};
+struct export_operations {};
+struct xattr_handler {};
+struct dentry_operations {};
+typedef const struct dentry_operations	dentry_operations_t;
+struct file_operations {};
+struct inode_operations {};
+struct address_space_operations {};
+
+extern struct file_system_type uzfs_fs_type;
+extern const struct super_operations uzfs_super_operations;
+extern const struct export_operations uzfs_export_operations;
+extern const struct dentry_operations uzfs_dentry_operations;
+extern const struct inode_operations uzfs_inode_operations;
+extern const struct inode_operations uzfs_dir_inode_operations;
+extern const struct inode_operations uzfs_symlink_inode_operations;
+extern const struct inode_operations uzfs_special_inode_operations;
+extern const struct file_operations uzfs_file_operations;
+extern const struct file_operations uzfs_dir_file_operations;
+extern const struct address_space_operations uzfs_address_space_operations;
+
+// zfs_ctldir
+extern const struct file_operations uzfs_fops_root;
+extern const struct inode_operations uzfs_ops_root;
+extern const struct file_operations uzfs_fops_snapdir;
+extern const struct inode_operations uzfs_ops_snapdir;
+extern const struct file_operations uzfs_fops_shares;
+extern const struct inode_operations uzfs_ops_shares;
+extern const struct file_operations simple_dir_operations;
+extern const struct inode_operations simple_dir_inode_operations;
 
 typedef struct zpl_dir_context {
     loff_t pos;
@@ -61,7 +98,7 @@ typedef struct zpl_dir_context {
     (type *)( (char *)__mptr - offsetof(type,member) );})
 
 typedef struct {
-    volatile int counter;
+    volatile uint32_t counter;
 } atomic_t;
 
 
@@ -101,8 +138,8 @@ static inline kgid_t __kgid_val(kgid_t gid)
 #define jiffies 0
 #define time_after(m,n) (0)
 
-#define task_io_account_read(n)
-#define task_io_account_write(n)
+static inline void task_io_account_read(int64_t n) {}
+static inline void task_io_account_write(int64_t n) {}
 
 #define S_IRWXUGO   (S_IRWXU|S_IRWXG|S_IRWXO)
 
@@ -204,16 +241,6 @@ struct cred {
 #define MAX_LFS_FILESIZE    ((loff_t)0x7fffffffffffffffLL)
 //#endif
 
-#define u32 __u32
-typedef unsigned int __u32;
-struct inode_operations;
-struct file_operations;
-
-struct super_operations {};
-struct export_operations {};
-struct xattr_handler {};
-struct dentry_operations {};
-
 struct backing_dev_info {
 //	struct list_head bdi_list;
 	unsigned long ra_pages;	/* max readahead in PAGE_CACHE_SIZE units */
@@ -261,6 +288,42 @@ struct backing_dev_info {
 //#endif
 };
 
+/*
+ * This struct is used to pass information from page reclaim to the shrinkers.
+ * We consolidate the values for easier extention later.
+ */
+struct shrink_control {
+	gfp_t gfp_mask;
+
+	/* How many slab objects shrinker() should scan and try to reclaim */
+	unsigned long nr_to_scan;
+};
+
+typedef atomic_t atomic_long_t;
+/*
+ * A callback you can register to apply pressure to ageable caches.
+ *
+ * 'sc' is passed shrink_control which includes a count 'nr_to_scan'
+ * and a 'gfpmask'.  It should look through the least-recently-used
+ * 'nr_to_scan' entries and attempt to free them up.  It should return
+ * the number of objects which remain in the cache.  If it returns -1, it means
+ * it cannot do any scanning at this time (eg. there is a risk of deadlock).
+ *
+ * The 'gfpmask' refers to the allocation we are currently trying to
+ * fulfil.
+ *
+ * Note that 'shrink' will be passed nr_to_scan == 0 when the VM is
+ * querying the cache size, so a fastpath for that case is appropriate.
+ */
+struct shrinker {
+	int (*shrink)(struct shrinker *, struct shrink_control *sc);
+	int seeks;	/* seeks to recreate an obj */
+	long batch;	/* reclaim batch size, 0 = default */
+
+	/* These are for internal use */
+	struct list_node list;
+	atomic_long_t nr_in_batch; /* objs pending delete */
+};
 
 struct super_block {
 //	struct list_head	s_list;		/* Keep this first */
@@ -356,7 +419,7 @@ struct super_block {
 //	 */
 //	int cleancache_poolid;
 //
-//	struct shrinker s_shrink;	/* per-sb shrinker handle */
+	struct shrinker s_shrink;	/* per-sb shrinker handle */
 //
 //	/* Number of inodes with nlink == 0 but still referenced */
 //	atomic_long_t s_remove_count;
@@ -384,6 +447,30 @@ struct super_block {
 //	RH_KABI_EXTEND(atomic_long_t s_fsnotify_inode_refs)
 };
 
+struct address_space_operations;
+struct address_space {
+//    struct inode        *host;      /* owner: inode, block_device */
+//    struct radix_tree_root  page_tree;  /* radix tree of all pages */
+//    spinlock_t      tree_lock;  /* and lock protecting it */
+//    RH_KABI_REPLACE(unsigned int i_mmap_writable,
+//             atomic_t i_mmap_writable) /* count VM_SHARED mappings */
+//    struct rb_root      i_mmap;     /* tree of private and shared mappings */
+//    struct list_head    i_mmap_nonlinear;/*list VM_NONLINEAR mappings */
+//    struct mutex        i_mmap_mutex;   /* protect tree, count, list */
+//    /* Protected by tree_lock together with the radix tree */
+//    unsigned long       nrpages;    /* number of total pages */
+//    /* number of shadow or DAX exceptional entries */
+//    RH_KABI_RENAME(unsigned long nrshadows,
+//               unsigned long nrexceptional);
+//    pgoff_t         writeback_index;/* writeback starts here */
+    const struct address_space_operations *a_ops;   /* methods */
+//    unsigned long       flags;      /* error bits/gfp mask */
+//    struct backing_dev_info *backing_dev_info; /* device readahead, etc */
+//    spinlock_t      private_lock;   /* for use by the address_space */
+//    struct list_head    private_list;   /* ditto */
+//    void            *private_data;  /* ditto */
+} __attribute__((aligned(sizeof(long))));
+
 /*
  * Keep mostly read-only and often accessed (especially for
  * the RCU path lookup and 'stat' data) fields at the beginning
@@ -403,7 +490,7 @@ struct inode {
 
 	const struct inode_operations	*i_op;
 	struct super_block	*i_sb;
-//	struct address_space	*i_mapping;
+	struct address_space	*i_mapping;
 
 //#ifdef CONFIG_SECURITY
 //	void			*i_security;
@@ -485,6 +572,40 @@ struct inode {
 	void			*i_private; /* fs or device private pointer */
 };
 
+struct dentry {
+//    /* RCU lookup touched fields */
+//    unsigned int d_flags;       /* protected by d_lock */
+//    seqcount_t d_seq;       /* per dentry seqlock */
+//    struct hlist_bl_node d_hash;    /* lookup hash list */
+//    struct dentry *d_parent;    /* parent directory */
+//    struct qstr d_name;
+    struct inode *d_inode;      /* Where the name belongs to - NULL is
+//                     * negative */
+//    unsigned char d_iname[DNAME_INLINE_LEN];    /* small names */
+//
+//    /* Ref lookup also touches following */
+//    struct lockref d_lockref;   /* per-dentry lock and refcount */
+//    const struct dentry_operations *d_op;
+//    struct super_block *d_sb;   /* The root of the dentry tree */
+//    unsigned long d_time;       /* used by d_revalidate */
+//    void *d_fsdata;         /* fs-specific data */
+//
+//    struct list_head d_lru;     /* LRU list */
+//    /*
+//     * d_child and d_rcu can share memory
+//     */
+//    union {
+//        struct list_head d_child;   /* child of parent list */
+//        struct rcu_head d_rcu;
+//    } d_u;
+//    struct list_head d_subdirs; /* our children */
+//    struct hlist_node d_alias;  /* inode alias list */
+};
+
+extern void init_special_inode(struct inode *, umode_t, dev_t);
+extern void truncate_inode_pages_range(struct address_space *, loff_t lstart, loff_t lend);
+
+
 extern struct inode *igrab(struct inode *inode);
 extern void iput(struct inode *inode);
 extern void drop_nlink(struct inode *inode);
@@ -546,12 +667,20 @@ extern gid_t crgetfsgid(const cred_t *cr);
 extern int fls(int x);
 extern int ilog2(uint64_t n);
 
-extern boolean_t has_capability(struct task_struct *t, int cap);
+extern boolean_t has_capability(proc_t *t, int cap);
 extern boolean_t capable(int cap);
 
 extern long zfsdev_ioctl(unsigned cmd, unsigned long arg);
 void schedule(void);
 
 extern long zfsdev_ioctl_common(uint_t, zfs_cmd_t *, int);
+
+// zfs_ctldir
+extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
+extern struct dentry * d_obtain_alias(struct inode *);
+extern boolean_t d_mountpoint(struct dentry *dentry);
+extern void dput(struct dentry *);
+extern int zfsctl_snapshot_unmount(const char *snapname, int flags);
+extern int kern_path(const char *name, unsigned int flags, struct path *path);
 
 #endif	/* _SYS_KERNEL_H */
