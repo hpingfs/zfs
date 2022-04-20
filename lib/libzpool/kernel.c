@@ -2163,3 +2163,9 @@ void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len)
     printf("%s\n", __func__);
     ASSERT(0);
 }
+
+void path_put(const struct path *path)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+}

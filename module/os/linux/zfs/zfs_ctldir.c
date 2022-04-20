@@ -425,7 +425,6 @@ static struct inode *
 zfsctl_inode_alloc(zfsvfs_t *zfsvfs, uint64_t id,
     const struct file_operations *fops, const struct inode_operations *ops)
 {
-    return NULL;
 	inode_timespec_t now;
 	struct inode *ip;
 	znode_t *zp;
@@ -494,7 +493,6 @@ static struct inode *
 zfsctl_inode_lookup(zfsvfs_t *zfsvfs, uint64_t id,
     const struct file_operations *fops, const struct inode_operations *ops)
 {
-    return NULL;
 	struct inode *ip = NULL;
 
 	while (ip == NULL) {
@@ -582,7 +580,6 @@ zfsctl_root(znode_t *zp)
 static int
 zfsctl_snapdir_fid(struct inode *ip, fid_t *fidp)
 {
-    return 0;
 	zfid_short_t *zfid = (zfid_short_t *)fidp;
 	zfid_long_t *zlfid = (zfid_long_t *)fidp;
 	uint32_t gen = 0;
@@ -1042,7 +1039,6 @@ static zfs_snapentry_t *
 zfsctl_snapshot_alloc(const char *full_name, const char *full_path, spa_t *spa,
     uint64_t objsetid, struct dentry *root_dentry)
 {
-    return NULL;
 	zfs_snapentry_t *se;
 
 	se = kmem_zalloc(sizeof (zfs_snapentry_t), KM_SLEEP);
@@ -1181,7 +1177,6 @@ int
 zfsctl_snapdir_vget(struct super_block *sb, uint64_t objsetid, int gen,
     struct inode **ipp)
 {
-    return 0;
 	int error;
 	struct path path;
 	char *mnt;

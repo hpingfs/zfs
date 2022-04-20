@@ -22,6 +22,7 @@ endif
 
 if BUILD_LINUX
 zpool_SOURCES += os/linux/zpool_vdev_os.c
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/spl
 endif
 
 zpool_LDADD = \
