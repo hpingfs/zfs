@@ -1576,6 +1576,7 @@ struct inode *new_inode(struct super_block *sb) {
     inode_set_iversion(ip, 1);
 
     ip->i_sb = sb;
+    ip->i_mapping = &ip->i_data;
 
     pthread_spin_init(&ip->i_lock, PTHREAD_PROCESS_PRIVATE);
 
