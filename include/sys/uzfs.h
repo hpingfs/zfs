@@ -70,4 +70,6 @@ struct super_block;
 int zpl_bdi_setup(struct super_block *sb, char *name);
 void zpl_bdi_destroy(struct super_block *sb);
 
+extern void zpl_generic_fillattr(struct user_namespace *user_ns, struct inode *inode, struct linux_kstat *stat);
+
 #endif	/* _SYS_UZFS_H */

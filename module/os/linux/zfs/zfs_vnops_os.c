@@ -2197,48 +2197,48 @@ int
 zfs_getattr_fast(struct user_namespace *user_ns, struct inode *ip,
     struct kstat *sp)
 {
-//	znode_t *zp = ITOZ(ip);
-//	zfsvfs_t *zfsvfs = ITOZSB(ip);
-//	uint32_t blksize;
-//	u_longlong_t nblocks;
-//
-//	ZFS_ENTER(zfsvfs);
-//	ZFS_VERIFY_ZP(zp);
-//
-//	mutex_enter(&zp->z_lock);
-//
-//	zpl_generic_fillattr(user_ns, ip, sp);
-//	/*
-//	 * +1 link count for root inode with visible '.zfs' directory.
-//	 */
-//	if ((zp->z_id == zfsvfs->z_root) && zfs_show_ctldir(zp))
-//		if (sp->nlink < ZFS_LINK_MAX)
-//			sp->nlink++;
-//
-//	sa_object_size(zp->z_sa_hdl, &blksize, &nblocks);
-//	sp->blksize = blksize;
-//	sp->blocks = nblocks;
-//
-//	if (unlikely(zp->z_blksz == 0)) {
-//		/*
-//		 * Block size hasn't been set; suggest maximal I/O transfers.
-//		 */
-//		sp->blksize = zfsvfs->z_max_blksz;
-//	}
-//
-//	mutex_exit(&zp->z_lock);
-//
-//	/*
-//	 * Required to prevent NFS client from detecting different inode
-//	 * numbers of snapshot root dentry before and after snapshot mount.
-//	 */
-//	if (zfsvfs->z_issnap) {
-//		if (ip->i_sb->s_root->d_inode == ip)
-//			sp->ino = ZFSCTL_INO_SNAPDIRS -
-//			    dmu_objset_id(zfsvfs->z_os);
-//	}
-//
-//	ZFS_EXIT(zfsvfs);
+	znode_t *zp = ITOZ(ip);
+	zfsvfs_t *zfsvfs = ITOZSB(ip);
+	uint32_t blksize;
+	u_longlong_t nblocks;
+
+	ZFS_ENTER(zfsvfs);
+	ZFS_VERIFY_ZP(zp);
+
+	mutex_enter(&zp->z_lock);
+
+	zpl_generic_fillattr(user_ns, ip, sp);
+	/*
+	 * +1 link count for root inode with visible '.zfs' directory.
+	 */
+	if ((zp->z_id == zfsvfs->z_root) && zfs_show_ctldir(zp))
+		if (sp->nlink < ZFS_LINK_MAX)
+			sp->nlink++;
+
+	sa_object_size(zp->z_sa_hdl, &blksize, &nblocks);
+	sp->blksize = blksize;
+	sp->blocks = nblocks;
+
+	if (unlikely(zp->z_blksz == 0)) {
+		/*
+		 * Block size hasn't been set; suggest maximal I/O transfers.
+		 */
+		sp->blksize = zfsvfs->z_max_blksz;
+	}
+
+	mutex_exit(&zp->z_lock);
+
+	/*
+	 * Required to prevent NFS client from detecting different inode
+	 * numbers of snapshot root dentry before and after snapshot mount.
+	 */
+	if (zfsvfs->z_issnap) {
+		if (ip->i_sb->s_root->d_inode == ip)
+			sp->ino = ZFSCTL_INO_SNAPDIRS -
+			    dmu_objset_id(zfsvfs->z_os);
+	}
+
+	ZFS_EXIT(zfsvfs);
 
 	return (0);
 }

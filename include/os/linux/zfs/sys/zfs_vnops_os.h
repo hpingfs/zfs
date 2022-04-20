@@ -48,6 +48,8 @@ struct znode;
 typedef struct znode znode_t;
 struct user_namespace;
 
+#define kstat linux_kstat
+
 #define FMODE_WRITE     (0x2)
 
 #define zpl_inode_timestamp_truncate(ts, ip)    \

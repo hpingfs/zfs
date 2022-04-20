@@ -38,6 +38,7 @@ struct spinlock_t;
 
 #define u32 __u32
 typedef unsigned int __u32;
+typedef unsigned long int u64;
 
 typedef struct znode znode_t;
 typedef struct objset objset_t;
@@ -600,6 +601,22 @@ struct dentry {
 //    } d_u;
 //    struct list_head d_subdirs; /* our children */
 //    struct hlist_node d_alias;  /* inode alias list */
+};
+
+struct linux_kstat {
+    u64     ino;
+    dev_t       dev;
+    umode_t     mode;
+    unsigned int    nlink;
+    kuid_t      uid;
+    kgid_t      gid;
+    dev_t       rdev;
+    loff_t      size;
+    struct timespec  atime;
+    struct timespec mtime;
+    struct timespec ctime;
+    unsigned long   blksize;
+    unsigned long long  blocks;
 };
 
 extern void init_special_inode(struct inode *, umode_t, dev_t);

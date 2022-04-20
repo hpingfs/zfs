@@ -92,4 +92,25 @@ void uzfs_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
 	}
 }
 
+// FIXME(hping)
+static loff_t i_size_read(const struct inode *inode)
+{
+    return inode->i_size;
+}
 
+void zpl_generic_fillattr(struct user_namespace *user_ns, struct inode *inode, struct linux_kstat *stat)
+{
+//    stat->dev = inode->i_sb->s_dev;
+    stat->ino = inode->i_ino;
+    stat->mode = inode->i_mode;
+    stat->nlink = inode->i_nlink;
+    stat->uid = inode->i_uid;
+    stat->gid = inode->i_gid;
+//    stat->rdev = inode->i_rdev;
+    stat->size = i_size_read(inode);
+    stat->atime = inode->i_atime;
+    stat->mtime = inode->i_mtime;
+    stat->ctime = inode->i_ctime;
+    stat->blksize = (1 << inode->i_blkbits);
+    stat->blocks = inode->i_blocks;
+}

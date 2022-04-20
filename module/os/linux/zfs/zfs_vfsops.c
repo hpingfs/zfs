@@ -1099,7 +1099,7 @@ zfs_statvfs(struct inode *ip, struct kstatfs *statp)
 	dmu_objset_space(zfsvfs->z_os,
 	    &refdbytes, &availbytes, &usedobjs, &availobjs);
 
-//	uint64_t fsid = dmu_objset_fsid_guid(zfsvfs->z_os);
+	uint64_t fsid = dmu_objset_fsid_guid(zfsvfs->z_os);
 	/*
 	 * The underlying storage pool actually uses multiple block
 	 * size.  Under Solaris frsize (fragment size) is reported as
@@ -1135,9 +1135,13 @@ zfs_statvfs(struct inode *ip, struct kstatfs *statp)
 	 */
 	statp->f_ffree = MIN(availobjs, availbytes >> DNODE_SHIFT);
 	statp->f_files = statp->f_ffree + usedobjs;
-// FIXME(hping)
-//	statp->f_fsid.val[0] = (uint32_t)fsid;
-//	statp->f_fsid.val[1] = (uint32_t)(fsid >> 32);
+#ifdef _KERNEL
+	statp->f_fsid.val[0] = (uint32_t)fsid;
+	statp->f_fsid.val[1] = (uint32_t)(fsid >> 32);
+#else
+	statp->f_fsid.__val[0] = (uint32_t)fsid;
+	statp->f_fsid.__val[1] = (uint32_t)(fsid >> 32);
+#endif
 	statp->f_type = ZFS_SUPER_MAGIC;
 	statp->f_namelen = MAXNAMELEN - 1;
 
