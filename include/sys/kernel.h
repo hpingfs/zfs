@@ -683,4 +683,6 @@ extern void dput(struct dentry *);
 extern int zfsctl_snapshot_unmount(const char *snapname, int flags);
 extern int kern_path(const char *name, unsigned int flags, struct path *path);
 
+extern void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len);
+
 #endif	/* _SYS_KERNEL_H */

@@ -1551,6 +1551,7 @@ zfs_extend(znode_t *zp, uint64_t end)
 	return (0);
 }
 
+#ifdef _KERNEL
 /*
  * zfs_zero_partial_page - Modeled after update_pages() but
  * with different arguments and semantics for use by zfs_freesp().
@@ -1561,39 +1562,38 @@ zfs_extend(znode_t *zp, uint64_t end)
  * Caller must acquire a range lock on the file for the region
  * being zeroed in order that the ARC and page cache stay in sync.
  */
-static void
-zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len)
+static void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len)
 {
-// FIXME(hping) do we need it?
-//	struct address_space *mp = ZTOI(zp)->i_mapping;
-//	struct page *pp;
-//	int64_t	off;
-//	void *pb;
-//
-//	ASSERT((start & PAGE_MASK) == ((start + len - 1) & PAGE_MASK));
-//
-//	off = start & (PAGE_SIZE - 1);
-//	start &= PAGE_MASK;
-//
-//	pp = find_lock_page(mp, start >> PAGE_SHIFT);
-//	if (pp) {
-//		if (mapping_writably_mapped(mp))
-//			flush_dcache_page(pp);
-//
-//		pb = kmap(pp);
-//		bzero(pb + off, len);
-//		kunmap(pp);
-//
-//		if (mapping_writably_mapped(mp))
-//			flush_dcache_page(pp);
-//
-//		mark_page_accessed(pp);
-//		SetPageUptodate(pp);
-//		ClearPageError(pp);
-//		unlock_page(pp);
-//		put_page(pp);
-//	}
+	struct address_space *mp = ZTOI(zp)->i_mapping;
+	struct page *pp;
+	int64_t	off;
+	void *pb;
+
+	ASSERT((start & PAGE_MASK) == ((start + len - 1) & PAGE_MASK));
+
+	off = start & (PAGE_SIZE - 1);
+	start &= PAGE_MASK;
+
+	pp = find_lock_page(mp, start >> PAGE_SHIFT);
+	if (pp) {
+		if (mapping_writably_mapped(mp))
+			flush_dcache_page(pp);
+
+		pb = kmap(pp);
+		bzero(pb + off, len);
+		kunmap(pp);
+
+		if (mapping_writably_mapped(mp))
+			flush_dcache_page(pp);
+
+		mark_page_accessed(pp);
+		SetPageUptodate(pp);
+		ClearPageError(pp);
+		unlock_page(pp);
+		put_page(pp);
+	}
 }
+#endif
 
 /*
  * Free space in a file.

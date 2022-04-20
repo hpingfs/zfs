@@ -2156,3 +2156,10 @@ int kern_path(const char *name, unsigned int flags, struct path *path)
 //        *path = nd.path;
 //    return res;
 }
+
+void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len)
+{
+    // never be called
+    printf("%s\n", __func__);
+    ASSERT(0);
+}
