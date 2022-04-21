@@ -26,6 +26,7 @@
 #include <sys/uspl.h>
 #include <sys/mount.h>
 #include <sys/gfp.h>
+#include <sys/vnode.h>
 
 #define WARN_ON(s) ASSERT(!(s))
 
@@ -45,63 +46,19 @@ typedef struct objset objset_t;
 typedef struct zfs_cmd zfs_cmd_t;
 
 struct path;
-struct user_namespace {};
+struct file;
+struct inode;
 
-struct file_system_type {};
-struct super_operations {};
-struct export_operations {};
-struct xattr_handler {};
-struct dentry_operations {};
-typedef const struct dentry_operations	dentry_operations_t;
-struct file_operations {};
-struct inode_operations {};
-struct address_space_operations {};
-
-extern struct file_system_type uzfs_fs_type;
-extern const struct super_operations uzfs_super_operations;
-extern const struct export_operations uzfs_export_operations;
-extern const struct dentry_operations uzfs_dentry_operations;
-extern const struct inode_operations uzfs_inode_operations;
-extern const struct inode_operations uzfs_dir_inode_operations;
-extern const struct inode_operations uzfs_symlink_inode_operations;
-extern const struct inode_operations uzfs_special_inode_operations;
-extern const struct file_operations uzfs_file_operations;
-extern const struct file_operations uzfs_dir_file_operations;
-extern const struct address_space_operations uzfs_address_space_operations;
-
-// zfs_ctldir
-extern const struct file_operations uzfs_fops_root;
-extern const struct inode_operations uzfs_ops_root;
-extern const struct file_operations uzfs_fops_snapdir;
-extern const struct inode_operations uzfs_ops_snapdir;
-extern const struct file_operations uzfs_fops_shares;
-extern const struct inode_operations uzfs_ops_shares;
-extern const struct file_operations simple_dir_operations;
-extern const struct inode_operations simple_dir_inode_operations;
-
+typedef struct filldir {} filldir_t;
 typedef struct zpl_dir_context {
+    void *dirent;
+    const filldir_t actor;
     loff_t pos;
 } zpl_dir_context_t;
 
-#define ZPL_DIR_CONTEXT_INIT(_pos) {   \
+#define ZPL_DIR_CONTEXT_INIT(_dirent, _actor, _pos) {   \
     .pos = _pos,                    \
 }
-
-/**
- * container_of - cast a member of a structure out to the containing structure
- * @ptr:    the pointer to the member.
- * @type:   the type of the container struct this is embedded in.
- * @member: the name of the member within the struct.
- *
- */
-#define container_of(ptr, type, member) ({          \
-    const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-    (type *)( (char *)__mptr - offsetof(type,member) );})
-
-typedef struct {
-    volatile uint32_t counter;
-} atomic_t;
-
 
 typedef	int	umode_t;
 
@@ -123,6 +80,149 @@ static inline kgid_t __kgid_val(kgid_t gid)
 {
     return gid;
 }
+
+struct linux_kstat {
+    u64     ino;
+    dev_t       dev;
+    umode_t     mode;
+    unsigned int    nlink;
+    kuid_t      uid;
+    kgid_t      gid;
+    dev_t       rdev;
+    loff_t      size;
+    struct timespec  atime;
+    struct timespec mtime;
+    struct timespec ctime;
+    unsigned long   blksize;
+    unsigned long long  blocks;
+};
+
+struct user_namespace {};
+struct file_system_type {};
+struct super_operations {};
+struct export_operations {};
+struct xattr_handler {};
+
+
+struct dentry_operations {
+    int (*d_revalidate)(struct dentry *, unsigned int);
+//    int (*d_weak_revalidate)(struct dentry *, unsigned int);
+//    int (*d_hash)(const struct dentry *, struct qstr *);
+//    int (*d_compare)(const struct dentry *, const struct dentry *,
+//            unsigned int, const char *, const struct qstr *);
+//    int (*d_delete)(const struct dentry *);
+//    void (*d_release)(struct dentry *);
+//    void (*d_prune)(struct dentry *);
+//    void (*d_iput)(struct dentry *, struct inode *);
+//    char *(*d_dname)(struct dentry *, char *, int);
+    struct vfsmount *(*d_automount)(struct path *);
+//    RH_KABI_REPLACE(int (*d_manage)(struct dentry *, bool),
+//            int (*d_manage)(const struct path *, bool))
+};
+typedef const struct dentry_operations	dentry_operations_t;
+
+struct file_operations {
+//    struct module *owner;
+    loff_t (*llseek) (struct file *, loff_t, int);
+    ssize_t (*read) (struct file *, char *, size_t, loff_t *);
+//    ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+//    ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+//    ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+    int (*readdir) (struct file *, void *, filldir_t);
+//    unsigned int (*poll) (struct file *, struct poll_table_struct *);
+//    long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+//    long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+//    int (*mmap) (struct file *, struct vm_area_struct *);
+    int (*open) (struct inode *, struct file *);
+//    int (*flush) (struct file *, fl_owner_t id);
+//    int (*release) (struct inode *, struct file *);
+//    int (*fsync) (struct file *, loff_t, loff_t, int datasync);
+//    int (*aio_fsync) (struct kiocb *, int datasync);
+//    int (*fasync) (int, struct file *, int);
+//    int (*lock) (struct file *, int, struct file_lock *);
+//    ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
+//    unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+//    int (*check_flags)(int);
+//    int (*flock) (struct file *, int, struct file_lock *);
+//    ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
+//    ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
+//    RH_KABI_REPLACE(int (*setlease)(struct file *, long, struct file_lock **), int (*setlease)(struct file *, long, struct file_lock **, void **))
+//    long (*fallocate)(struct file *file, int mode, loff_t offset,
+//              loff_t len);
+//    int (*show_fdinfo)(struct seq_file *m, struct file *f);
+//    RH_KABI_EXTEND(int (*iterate) (struct file *, struct dir_context *))
+};
+
+struct inode_operations {
+    struct dentry * (*lookup) (struct inode *,struct dentry *, unsigned int);
+//    void * (*follow_link) (struct dentry *, struct nameidata *);
+//    int (*permission) (struct inode *, int);
+//    struct posix_acl * (*get_acl)(struct inode *, int);
+//
+//    int (*readlink) (struct dentry *, char __user *,int);
+//    void (*put_link) (struct dentry *, struct nameidata *, void *);
+//
+//    int (*create) (struct inode *,struct dentry *, umode_t, bool);
+//    int (*link) (struct dentry *,struct inode *,struct dentry *);
+//    int (*unlink) (struct inode *,struct dentry *);
+//    int (*symlink) (struct inode *,struct dentry *,const char *);
+    int (*mkdir) (struct inode *,struct dentry *,umode_t);
+    int (*rmdir) (struct inode *,struct dentry *);
+//    int (*mknod) (struct inode *,struct dentry *,umode_t,dev_t);
+    int (*rename) (struct inode *, struct dentry *, struct inode *, struct dentry *);
+//    int (*setattr) (struct dentry *, struct iattr *);
+    int (*getattr) (struct vfsmount *mnt, struct dentry *, struct linux_kstat *);
+//    int (*setxattr) (struct dentry *, const char *,const void *,size_t,int);
+//    ssize_t (*getxattr) (struct dentry *, const char *, void *, size_t);
+//    ssize_t (*listxattr) (struct dentry *, char *, size_t);
+//    int (*removexattr) (struct dentry *, const char *);
+//    int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
+//              u64 len);
+//    int (*update_time)(struct inode *, struct timespec *, int);
+//    int (*atomic_open)(struct inode *, struct dentry *,
+//               struct file *, unsigned open_flag,
+//               umode_t create_mode, int *opened);
+};
+
+struct address_space_operations {};
+
+extern struct file_system_type uzfs_fs_type;
+extern const struct super_operations uzfs_super_operations;
+extern const struct export_operations uzfs_export_operations;
+extern const struct dentry_operations uzfs_dentry_operations;
+extern const struct inode_operations uzfs_inode_operations;
+extern const struct inode_operations uzfs_dir_inode_operations;
+extern const struct inode_operations uzfs_symlink_inode_operations;
+extern const struct inode_operations uzfs_special_inode_operations;
+extern const struct file_operations uzfs_file_operations;
+extern const struct file_operations uzfs_dir_file_operations;
+extern const struct address_space_operations uzfs_address_space_operations;
+
+// zfs_ctldir
+extern const struct file_operations zpl_fops_root;
+extern const struct inode_operations zpl_ops_root;
+extern const struct file_operations zpl_fops_snapdir;
+extern const struct inode_operations zpl_ops_snapdir;
+extern const struct file_operations zpl_fops_shares;
+extern const struct inode_operations zpl_ops_shares;
+extern const struct file_operations simple_dir_operations;
+extern const struct inode_operations simple_dir_inode_operations;
+
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:    the pointer to the member.
+ * @type:   the type of the container struct this is embedded in.
+ * @member: the name of the member within the struct.
+ *
+ */
+#define container_of(ptr, type, member) ({          \
+    const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+    (type *)( (char *)__mptr - offsetof(type,member) );})
+
+typedef struct {
+    volatile uint32_t counter;
+} atomic_t;
+
 
 #if defined(CONFIG_64BIT)
 #define	TIME_MAX			INT64_MAX
@@ -573,20 +673,53 @@ struct inode {
 	void			*i_private; /* fs or device private pointer */
 };
 
+
+#define DCACHE_MOUNTED      0x10000 /* is a mountpoint */
+#define DCACHE_NEED_AUTOMOUNT   0x20000 /* handle automount on this dir */
+#define DCACHE_MANAGE_TRANSIT   0x40000 /* manage transit from this dirent */
+#define DCACHE_MANAGED_DENTRY \
+    (DCACHE_MOUNTED|DCACHE_NEED_AUTOMOUNT|DCACHE_MANAGE_TRANSIT)
+
+/* The hash is always the low bits of hash_len */
+#ifdef __LITTLE_ENDIAN
+ #define HASH_LEN_DECLARE u32 hash; u32 len;
+ #define bytemask_from_count(cnt)   (~(~0ul << (cnt)*8))
+#else
+ #define HASH_LEN_DECLARE u32 len; u32 hash;
+ #define bytemask_from_count(cnt)   (~(~0ul >> (cnt)*8))
+#endif
+
+/*
+ * "quick string" -- eases parameter passing, but more importantly
+ * saves "metadata" about the string (ie length and the hash).
+ *
+ * hash comes first so it snuggles against d_parent in the
+ * dentry.
+ */
+struct qstr {
+    union {
+        struct {
+            HASH_LEN_DECLARE;
+        };
+        u64 hash_len;
+    };
+    const unsigned char *name;
+};
+
 struct dentry {
 //    /* RCU lookup touched fields */
-//    unsigned int d_flags;       /* protected by d_lock */
+    unsigned int d_flags;       /* protected by d_lock */
 //    seqcount_t d_seq;       /* per dentry seqlock */
 //    struct hlist_bl_node d_hash;    /* lookup hash list */
 //    struct dentry *d_parent;    /* parent directory */
-//    struct qstr d_name;
+    struct qstr d_name;
     struct inode *d_inode;      /* Where the name belongs to - NULL is
 //                     * negative */
 //    unsigned char d_iname[DNAME_INLINE_LEN];    /* small names */
 //
 //    /* Ref lookup also touches following */
 //    struct lockref d_lockref;   /* per-dentry lock and refcount */
-//    const struct dentry_operations *d_op;
+    const struct dentry_operations *d_op;
 //    struct super_block *d_sb;   /* The root of the dentry tree */
 //    unsigned long d_time;       /* used by d_revalidate */
 //    void *d_fsdata;         /* fs-specific data */
@@ -603,21 +736,69 @@ struct dentry {
 //    struct hlist_node d_alias;  /* inode alias list */
 };
 
-struct linux_kstat {
-    u64     ino;
-    dev_t       dev;
-    umode_t     mode;
-    unsigned int    nlink;
-    kuid_t      uid;
-    kgid_t      gid;
-    dev_t       rdev;
-    loff_t      size;
-    struct timespec  atime;
-    struct timespec mtime;
-    struct timespec ctime;
-    unsigned long   blksize;
-    unsigned long long  blocks;
+typedef unsigned fmode_t;
+
+struct file {
+//    /*
+//     * fu_list becomes invalid after file_free is called and queued via
+//     * fu_rcuhead for RCU freeing
+//     */
+//    union {
+//        struct list_head    fu_list;
+//        struct rcu_head     fu_rcuhead;
+//    } f_u;
+//    struct path     f_path;
+//#define f_dentry    f_path.dentry
+    struct inode        *f_inode;   /* cached value */
+//    const struct file_operations    *f_op;
+//
+//    /*
+//     * Protects f_ep_links, f_flags.
+//     * Must not be taken from IRQ context.
+//     */
+//    spinlock_t      f_lock;
+//#ifdef __GENKSYMS__
+//#ifdef CONFIG_SMP
+//    int         f_sb_list_cpu;
+//#endif
+//#else
+//#ifdef CONFIG_SMP
+//    int         f_sb_list_cpu_deprecated;
+//#endif
+//#endif
+//    atomic_long_t       f_count;
+//    unsigned int        f_flags;
+    fmode_t         f_mode;
+    loff_t          f_pos;
+//    struct fown_struct  f_owner;
+//    const struct cred   *f_cred;
+//    struct file_ra_state    f_ra;
+//
+//    u64         f_version;
+//#ifdef CONFIG_SECURITY
+//    void            *f_security;
+//#endif
+//    /* needed for tty driver, and maybe others */
+//    void            *private_data;
+//
+//#ifdef CONFIG_EPOLL
+//    /* Used by fs/eventpoll.c to link all the hooks to this file */
+//    struct list_head    f_ep_links;
+//    struct list_head    f_tfile_llink;
+//#endif /* #ifdef CONFIG_EPOLL */
+//    struct address_space    *f_mapping;
+//#ifndef __GENKSYMS__
+//    struct mutex        f_pos_lock;
+//#endif
 };
+
+static inline struct inode *file_inode(const struct file *f)
+{
+    return f->f_inode;
+}
+
+#define dname(dentry)   ((char *)((dentry)->d_name.name))
+#define dlen(dentry)    ((int)((dentry)->d_name.len))
 
 extern void init_special_inode(struct inode *, umode_t, dev_t);
 extern void truncate_inode_pages_range(struct address_space *, loff_t lstart, loff_t lend);
@@ -702,5 +883,105 @@ extern int kern_path(const char *name, unsigned int flags, struct path *path);
 
 extern void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len);
 extern void path_put(const struct path *path);
+
+extern int generic_file_open(struct inode * inode, struct file * filp);
+
+boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx);
+boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx);
+boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx);
+int zpl_root_readdir(struct file *filp, void *dirent, filldir_t filldir);
+extern void generic_fillattr(struct inode *, struct linux_kstat *);
+
+extern struct dentry * d_splice_alias(struct inode *, struct dentry *);
+
+static inline void * ERR_PTR(long error)
+{
+        return (void *) error;
+}
+
+/* d_flags entries */
+#define DCACHE_OP_HASH      0x0001
+#define DCACHE_OP_COMPARE   0x0002
+#define DCACHE_OP_REVALIDATE    0x0004
+#define DCACHE_OP_DELETE    0x0008
+#define DCACHE_OP_PRUNE         0x0010
+/*
+ * 2.6.38 API addition,
+ * Added d_clear_d_op() helper function which clears some flags and the
+ * registered dentry->d_op table.  This is required because d_set_d_op()
+ * issues a warning when the dentry operations table is already set.
+ * For the .zfs control directory to work properly we must be able to
+ * override the default operations table and register custom .d_automount
+ * and .d_revalidate callbacks.
+ */
+static inline void
+d_clear_d_op(struct dentry *dentry)
+{
+    dentry->d_op = NULL;
+    dentry->d_flags &= ~(
+        DCACHE_OP_HASH | DCACHE_OP_COMPARE |
+        DCACHE_OP_REVALIDATE | DCACHE_OP_DELETE);
+}
+
+extern void d_set_d_op(struct dentry *dentry, const struct dentry_operations *op);
+extern void d_instantiate(struct dentry *, struct inode *);
+
+extern void zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr);
+
+extern loff_t generic_file_llseek(struct file *file, loff_t offset, int whence);
+extern ssize_t generic_read_dir(struct file *, char *, size_t, loff_t *);
+
+/*
+ * 4.11 API change
+ * These macros are defined by kernel 4.11.  We define them so that the same
+ * code builds under kernels < 4.11 and >= 4.11.  The macros are set to 0 so
+ * that it will create obvious failures if they are accidentally used when built
+ * against a kernel >= 4.11.
+ */
+
+#ifndef STATX_BASIC_STATS
+#define STATX_BASIC_STATS   0
+#endif
+
+#ifndef AT_STATX_SYNC_AS_STAT
+#define AT_STATX_SYNC_AS_STAT   0
+#endif
+
+/*
+ * 4.11 API change
+ * 4.11 takes struct path *, < 4.11 takes vfsmount *
+ */
+
+#ifdef HAVE_VFSMOUNT_IOPS_GETATTR
+#define ZPL_GETATTR_WRAPPER(func)                   \
+static int                              \
+func(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)   \
+{                                   \
+    struct path path = { .mnt = mnt, .dentry = dentry };        \
+    return func##_impl(&path, stat, STATX_BASIC_STATS,      \
+        AT_STATX_SYNC_AS_STAT);                 \
+}
+#elif defined(HAVE_PATH_IOPS_GETATTR)
+#define ZPL_GETATTR_WRAPPER(func)                   \
+static int                              \
+func(const struct path *path, struct kstat *stat, u32 request_mask, \
+    unsigned int query_flags)                       \
+{                                   \
+    return (func##_impl(path, stat, request_mask, query_flags));    \
+}
+#elif defined(HAVE_USERNS_IOPS_GETATTR)
+#define ZPL_GETATTR_WRAPPER(func)                   \
+static int                              \
+func(struct user_namespace *user_ns, const struct path *path,   \
+    struct kstat *stat, u32 request_mask, unsigned int query_flags) \
+{                                   \
+    return (func##_impl(user_ns, path, stat, request_mask, \
+        query_flags));  \
+}
+#else
+#error
+#endif
+
+extern int zpl_snapdir_readdir(struct file *filp, void *dirent, filldir_t filldir);
 
 #endif	/* _SYS_KERNEL_H */

@@ -309,15 +309,6 @@ typedef pthread_spinlock_t spinlock_t;
 #define spin_unlock(lock) pthread_spin_unlock(lock)
 
 /*
- * Credentials
- */
-extern uid_t crgetuid(cred_t *cr);
-extern uid_t crgetruid(cred_t *cr);
-extern gid_t crgetgid(cred_t *cr);
-extern int crgetngroups(cred_t *cr);
-extern gid_t *crgetgroups(cred_t *cr);
-
-/*
  * Condition variables
  */
 typedef pthread_cond_t		kcondvar_t;

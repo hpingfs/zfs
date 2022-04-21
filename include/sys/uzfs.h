@@ -40,12 +40,12 @@
 #define zpl_special_inode_operations           uzfs_special_inode_operations
 
 // zfs_ctldir
-#define zpl_fops_root                          uzfs_fops_root
-#define zpl_ops_root                           uzfs_ops_root
-#define zpl_fops_snapdir                       uzfs_fops_snapdir
-#define zpl_ops_snapdir                        uzfs_ops_snapdir
-#define zpl_fops_shares                        uzfs_fops_shares
-#define zpl_ops_shares                         uzfs_ops_shares
+//#define zpl_fops_root                          uzfs_fops_root
+//#define zpl_ops_root                           uzfs_ops_root
+//#define zpl_fops_snapdir                       uzfs_fops_snapdir
+//#define zpl_ops_snapdir                        uzfs_ops_snapdir
+//#define zpl_fops_shares                        uzfs_fops_shares
+//#define zpl_ops_shares                         uzfs_ops_shares
 
 extern void zpl_prune_sb(int64_t nr_to_scan, void *arg);
 

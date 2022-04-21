@@ -100,4 +100,53 @@ boolean_t zfs_proc_is_caller(proc_t *t)
 	return B_FALSE;
 }
 
+/* Hold a reference on the credential */
+void
+crhold(cred_t *cr)
+{
+//	(void) get_cred((const cred_t *)cr);
+}
+
+/* Free a reference on the credential */
+void
+crfree(cred_t *cr)
+{
+//	put_cred((const cred_t *)cr);
+}
+
+uid_t
+crgetuid(cred_t *cr)
+{
+	(void) cr;
+	return (0);
+}
+
+uid_t
+crgetruid(cred_t *cr)
+{
+	(void) cr;
+	return (0);
+}
+
+gid_t
+crgetgid(cred_t *cr)
+{
+	(void) cr;
+	return (0);
+}
+
+int
+crgetngroups(cred_t *cr)
+{
+	(void) cr;
+	return (0);
+}
+
+gid_t *
+crgetgroups(cred_t *cr)
+{
+	(void) cr;
+	return (NULL);
+}
+
 

@@ -55,4 +55,16 @@ int copyinstr(const void *from, void *to, size_t len, size_t *done);
 
 boolean_t zfs_proc_is_caller(proc_t *t);
 
+/*
+ * Credentials
+ */
+extern void crhold(cred_t *cr);
+extern void crfree(cred_t *cr);
+extern uid_t crgetuid(cred_t *cr);
+extern uid_t crgetruid(cred_t *cr);
+extern gid_t crgetgid(cred_t *cr);
+extern int crgetngroups(cred_t *cr);
+extern gid_t *crgetgroups(cred_t *cr);
+
+
 #endif	/* _SYS_USPL_H */

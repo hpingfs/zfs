@@ -1474,6 +1474,8 @@ int zfs_readdir_common(char* fsname, char* path) {
 	struct inode *dir_inode = NULL;
     struct super_block* sb = NULL;
     int error = 0;
+    boolean_t is_ctldir_root = B_FALSE;
+    boolean_t is_ctldir_snapshot = B_FALSE;
 
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
@@ -1482,6 +1484,8 @@ int zfs_readdir_common(char* fsname, char* path) {
 
 	vfs->vfs_data = zfsvfs;
 	zfsvfs->z_vfs = vfs;
+
+	zfsvfs->z_show_ctldir = ZFS_SNAPDIR_VISIBLE;
 
     sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
     sb->s_fs_info = zfsvfs;
@@ -1494,18 +1498,45 @@ int zfs_readdir_common(char* fsname, char* path) {
     error = zfs_root(zfsvfs, &root_inode);
     if (error) goto out;
 
+	if (!zfsvfs->z_issnap)
+		zfsctl_create(zfsvfs);
+
     if (strlen(path) == 1 && path[0] == '/') {
         dir_inode = root_inode;
+    } else if (strcmp(path, ".zfs") == 0) {
+        is_ctldir_root = B_TRUE;
+        dir_inode = zfsctl_root(ITOZ(root_inode));
+    } else if (strcmp(path, ".zfs/snapshot") == 0) {
+        is_ctldir_snapshot = B_TRUE;
+        struct inode * ctl_root_inode = zfsctl_root(ITOZ(root_inode));
+        error = zfsctl_root_lookup(ctl_root_inode, "snapshot", &dir_inode, 0, NULL, NULL, NULL);
+        if (error) goto out;
     } else {
         error = zfs_lookup(ITOZ(root_inode), path, &pzp, 0, NULL, NULL, NULL);
         if (error) goto out;
         dir_inode = ZTOI(pzp);
     }
 
-	zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(0);
+    if (is_ctldir_root) {
+        struct file f;
+        f.f_inode = dir_inode;
+        f.f_pos = 0;
+        filldir_t t;
+        zpl_root_readdir(&f, NULL, t);
+    } else if (is_ctldir_snapshot) {
+        struct file f;
+        f.f_inode = dir_inode;
+        f.f_pos = 0;
+        filldir_t t;
+        zpl_snapdir_readdir(&f, NULL, t);
+    } else {
+        zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(NULL, NULL, 0);
 
-    error = zfs_readdir(dir_inode, &ctx, NULL);
-    if (error) return error;
+        error = zfs_readdir(dir_inode, &ctx, NULL);
+        if (error) return error;
+    }
+
+	zfsctl_destroy(zfsvfs);
 
 	VERIFY(zfsvfs_teardown(zfsvfs, B_FALSE) == 0);
 	os = zfsvfs->z_os;

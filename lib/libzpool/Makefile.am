@@ -194,7 +194,8 @@ KERNEL_C = \
 	zfs_ioctl_os.c \
 	uzfs.c \
 	uspl.c \
-	dataset_kstats.c
+	dataset_kstats.c \
+	zpl_ctldir.c
 
 LUA_C = \
 	lapi.c \
@@ -234,8 +235,7 @@ libzpool_la_LIBADD = \
 	$(abs_top_builddir)/lib/libunicode/libunicode.la \
 	$(abs_top_builddir)/lib/libnvpair/libnvpair.la \
 	$(abs_top_builddir)/lib/libzstd/libzstd.la \
-	$(abs_top_builddir)/lib/libzutil/libzutil.la \
-	$(abs_top_builddir)/lib/libspl/libspl.la
+	$(abs_top_builddir)/lib/libzutil/libzutil.la
 
 libzpool_la_LIBADD += $(LIBCLOCK_GETTIME) $(ZLIB_LIBS) -ldl -lm
 

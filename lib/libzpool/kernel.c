@@ -45,6 +45,7 @@
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_znode.h>
 #include <sys/zfs_vnops.h>
+#include <sys/zfs_ctldir.h>
 #include <sys/zstd/zstd.h>
 #include <sys/zvol.h>
 #include <zfs_fletcher.h>
@@ -842,41 +843,6 @@ kernel_fini(void)
 	random_fini();
 }
 
-uid_t
-crgetuid(cred_t *cr)
-{
-	(void) cr;
-	return (0);
-}
-
-uid_t
-crgetruid(cred_t *cr)
-{
-	(void) cr;
-	return (0);
-}
-
-gid_t
-crgetgid(cred_t *cr)
-{
-	(void) cr;
-	return (0);
-}
-
-int
-crgetngroups(cred_t *cr)
-{
-	(void) cr;
-	return (0);
-}
-
-gid_t *
-crgetgroups(cred_t *cr)
-{
-	(void) cr;
-	return (NULL);
-}
-
 //int
 //zfs_secpolicy_snapshot_perms(const char *name, cred_t *cr)
 //{
@@ -1426,12 +1392,12 @@ const struct file_operations uzfs_dir_file_operations = {};
 const struct address_space_operations uzfs_address_space_operations = {};
 
 // zfs_ctldir
-const struct file_operations uzfs_fops_root = {};
-const struct inode_operations uzfs_ops_root = {};
-const struct file_operations uzfs_fops_snapdir = {};
-const struct inode_operations uzfs_ops_snapdir = {};
-const struct file_operations uzfs_fops_shares = {};
-const struct inode_operations uzfs_ops_shares = {};
+//const struct file_operations uzfs_fops_root = {};
+//const struct inode_operations uzfs_ops_root = {};
+//const struct file_operations uzfs_fops_snapdir = {};
+//const struct inode_operations uzfs_ops_snapdir = {};
+//const struct file_operations uzfs_fops_shares = {};
+//const struct inode_operations uzfs_ops_shares = {};
 const struct file_operations simple_dir_operations = {};
 const struct inode_operations simple_dir_inode_operations = {};
 
@@ -1789,6 +1755,34 @@ boolean_t zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, ui
     printf("\t%s\tobjnum: %ld\n", name, ino);
     return 1;
 }
+
+boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx)
+{
+    printf("\t.\tobjnum: %ld\n", file->f_inode->i_ino);
+    return 1;
+}
+
+boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx)
+{
+    printf("\t..\tobjnum: %ld\n", file->f_inode->i_ino);
+    return 1;
+}
+
+boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx)
+{
+    if (ctx->pos == 0) {
+        if (!zpl_dir_emit_dot(file, ctx))
+            return (B_FALSE);
+        ctx->pos = 1;
+    }
+    if (ctx->pos == 1) {
+        if (!zpl_dir_emit_dotdot(file, ctx))
+            return (B_FALSE);
+        ctx->pos = 2;
+    }
+    return (B_TRUE);
+}
+
 
 void update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
 {
@@ -2169,3 +2163,73 @@ void path_put(const struct path *path)
     printf("%s\n", __func__);
     ASSERT(0);
 }
+
+int generic_file_open(struct inode * inode, struct file * filp)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+struct dentry * d_splice_alias(struct inode *inode, struct dentry *dentry)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return NULL;
+}
+
+void d_set_d_op(struct dentry *dentry, const struct dentry_operations *op)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+}
+
+void d_instantiate(struct dentry *dentry, struct inode *inode)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+}
+
+void generic_fillattr(struct inode *inode, struct linux_kstat *stat)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+}
+
+loff_t generic_file_llseek(struct file *file, loff_t offset, int whence)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+ssize_t generic_read_dir(struct file * file, char *buf, size_t size, loff_t *off)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int zfsctl_snapshot_mount(struct path *path, int flags)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+void
+zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
+{
+    vap->va_mask = ATTR_MODE;
+    vap->va_mode = mode;
+    vap->va_uid = crgetfsuid(cr);
+
+    if (dir && dir->i_mode & S_ISGID) {
+        vap->va_gid = KGID_TO_SGID(dir->i_gid);
+        if (S_ISDIR(mode))
+            vap->va_mode |= S_ISGID;
+    } else {
+        vap->va_gid = crgetfsgid(cr);
+    }
+}
+

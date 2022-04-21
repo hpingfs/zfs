@@ -31,7 +31,12 @@
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_vnops.h>
 #include <sys/zfs_ctldir.h>
+
+#ifdef _KERNEL
 #include <sys/zpl.h>
+#else
+#define kstat linux_kstat
+#endif
 
 /*
  * Common open routine.  Disallow any write access.
@@ -82,7 +87,7 @@ out:
 }
 
 #if !defined(HAVE_VFS_ITERATE) && !defined(HAVE_VFS_ITERATE_SHARED)
-static int
+int
 zpl_root_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
 	zpl_dir_context_t ctx =
@@ -285,7 +290,7 @@ out:
 }
 
 #if !defined(HAVE_VFS_ITERATE) && !defined(HAVE_VFS_ITERATE_SHARED)
-static int
+int
 zpl_snapdir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
 	zpl_dir_context_t ctx =
@@ -559,7 +564,8 @@ zpl_shares_getattr_impl(const struct path *path, struct kstat *stat,
 #if defined(HAVE_GENERIC_FILLATTR_USERNS) && defined(HAVE_USERNS_IOPS_GETATTR)
 		error = -zfs_getattr_fast(user_ns, ZTOI(dzp), stat);
 #else
-		error = -zfs_getattr_fast(kcred->user_ns, ZTOI(dzp), stat);
+// FIXME(hping)
+//		error = -zfs_getattr_fast(kcred->user_ns, ZTOI(dzp), stat);
 #endif
 		iput(ZTOI(dzp));
 	}
