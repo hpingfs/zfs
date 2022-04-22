@@ -2311,3 +2311,53 @@ ssize_t zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
     return 0;
 }
 
+ssize_t do_sync_read(struct file *filp, char *buf, size_t len, loff_t *ppos)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+ssize_t do_sync_write(struct file *filp, const char *buf, size_t len, loff_t *ppos)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int __set_page_dirty_nobuffers(struct page *page)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int filemap_write_and_wait_range(struct address_space *mapping, loff_t lstart, loff_t lend)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+void touch_atime(struct path *path)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+}
+
+int generic_segment_checks(const struct iovec *iov, unsigned long *nr_segs, size_t *count, int access_flags)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+
+int generic_write_checks(struct file *file, loff_t *pos, size_t *count, int isblk)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+

@@ -92,12 +92,6 @@ void uzfs_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
 	}
 }
 
-// FIXME(hping)
-static loff_t i_size_read(const struct inode *inode)
-{
-    return inode->i_size;
-}
-
 void zpl_generic_fillattr(struct user_namespace *user_ns, struct inode *inode, struct linux_kstat *stat)
 {
 //    stat->dev = inode->i_sb->s_dev;

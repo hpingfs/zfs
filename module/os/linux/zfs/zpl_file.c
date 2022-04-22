@@ -33,8 +33,12 @@
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_vnops.h>
 #include <sys/zfs_project.h>
+#include <sys/zpl.h>
+
+#ifdef _KERNEL
 #ifdef HAVE_VFS_SET_PAGE_DIRTY_NOBUFFERS
 #include <linux/pagemap.h>
+#endif
 #endif
 
 /*
@@ -526,6 +530,7 @@ zpl_llseek(struct file *filp, loff_t offset, int whence)
 	return (generic_file_llseek(filp, offset, whence));
 }
 
+#ifdef _KERNEL
 /*
  * It's worth taking a moment to describe how mmap is implemented
  * for zfs because it differs considerably from other Linux filesystems.
@@ -727,6 +732,7 @@ zpl_writepage(struct page *pp, struct writeback_control *wbc)
 
 	return (zpl_putpage(pp, wbc, pp->mapping));
 }
+#endif // _KERNEL
 
 /*
  * The flag combination which matches the behavior of zfs_space() is
@@ -1035,10 +1041,12 @@ zpl_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 
 const struct address_space_operations zpl_address_space_operations = {
+#ifdef _KERNEL
 	.readpages	= zpl_readpages,
 	.readpage	= zpl_readpage,
 	.writepage	= zpl_writepage,
 	.writepages	= zpl_writepages,
+#endif
 	.direct_IO	= zpl_direct_IO,
 #ifdef HAVE_VFS_SET_PAGE_DIRTY_NOBUFFERS
 	.set_page_dirty = __set_page_dirty_nobuffers,
@@ -1066,7 +1074,9 @@ const struct file_operations zpl_file_operations = {
 	.aio_read	= zpl_aio_read,
 	.aio_write	= zpl_aio_write,
 #endif
+#ifdef _KERNEL
 	.mmap		= zpl_mmap,
+#endif
 	.fsync		= zpl_fsync,
 #ifdef HAVE_FILE_AIO_FSYNC
 	.aio_fsync	= zpl_aio_fsync,
@@ -1095,8 +1105,10 @@ const struct file_operations zpl_dir_file_operations = {
 #endif
 };
 
+#ifdef _KERNEL
 /* BEGIN CSTYLED */
 module_param(zfs_fallocate_reserve_percent, uint, 0644);
 MODULE_PARM_DESC(zfs_fallocate_reserve_percent,
     "Percentage of length to use for the available capacity check");
 /* END CSTYLED */
+#endif

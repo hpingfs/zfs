@@ -30,9 +30,9 @@
 #define zpl_export_operations                  uzfs_export_operations
 //#define zpl_dentry_operations                  uzfs_dentry_operations
 
-#define zpl_file_operations                    uzfs_file_operations
-#define zpl_dir_file_operations                uzfs_dir_file_operations
-#define zpl_address_space_operations           uzfs_address_space_operations
+//#define zpl_file_operations                    uzfs_file_operations
+//#define zpl_dir_file_operations                uzfs_dir_file_operations
+//#define zpl_address_space_operations           uzfs_address_space_operations
 
 //#define zpl_inode_operations                   uzfs_inode_operations
 //#define zpl_dir_inode_operations               uzfs_dir_inode_operations
