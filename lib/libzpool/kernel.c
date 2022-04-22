@@ -1378,6 +1378,8 @@ zfsvfs_update_fromname(const char *oldname, const char *newname)
 }
 
 // hping start
+struct cred global_cred = {};
+struct cred *kcred = &global_cred;
 
 struct file_system_type uzfs_fs_type = {};
 const struct super_operations uzfs_super_operations = {};
@@ -1750,39 +1752,45 @@ void shrink_dcache_sb(struct super_block *sb)
 //    spin_unlock(&dcache_lru_lock);
 }
 
-boolean_t zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
+int uzfs_dir_emit(void *ctx, const char *name, int namelen, loff_t off, uint64_t ino, unsigned type)
 {
     printf("\t%s\tobjnum: %ld\n", name, ino);
-    return 1;
+    return 0;
 }
-
-boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx)
-{
-    printf("\t.\tobjnum: %ld\n", file->f_inode->i_ino);
-    return 1;
-}
-
-boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx)
-{
-    printf("\t..\tobjnum: %ld\n", file->f_inode->i_ino);
-    return 1;
-}
-
-boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx)
-{
-    if (ctx->pos == 0) {
-        if (!zpl_dir_emit_dot(file, ctx))
-            return (B_FALSE);
-        ctx->pos = 1;
-    }
-    if (ctx->pos == 1) {
-        if (!zpl_dir_emit_dotdot(file, ctx))
-            return (B_FALSE);
-        ctx->pos = 2;
-    }
-    return (B_TRUE);
-}
-
+//
+//boolean_t zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
+//{
+//    printf("\t%s\tobjnum: %ld\n", name, ino);
+//    return 1;
+//}
+//
+//boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx)
+//{
+//    printf("\t.\tobjnum: %ld\n", file->f_inode->i_ino);
+//    return 1;
+//}
+//
+//boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx)
+//{
+//    printf("\t..\tobjnum: %ld\n", file->f_inode->i_ino);
+//    return 1;
+//}
+//
+//boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx)
+//{
+//    if (ctx->pos == 0) {
+//        if (!zpl_dir_emit_dot(file, ctx))
+//            return (B_FALSE);
+//        ctx->pos = 1;
+//    }
+//    if (ctx->pos == 1) {
+//        if (!zpl_dir_emit_dotdot(file, ctx))
+//            return (B_FALSE);
+//        ctx->pos = 2;
+//    }
+//    return (B_TRUE);
+//}
+//
 
 void update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
 {
@@ -2217,19 +2225,89 @@ int zfsctl_snapshot_mount(struct path *path, int flags)
     return 0;
 }
 
-void
-zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
-{
-    vap->va_mask = ATTR_MODE;
-    vap->va_mode = mode;
-    vap->va_uid = crgetfsuid(cr);
+//void
+//zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr)
+//{
+//    vap->va_mask = ATTR_MODE;
+//    vap->va_mode = mode;
+//    vap->va_uid = crgetfsuid(cr);
+//
+//    if (dir && dir->i_mode & S_ISGID) {
+//        vap->va_gid = KGID_TO_SGID(dir->i_gid);
+//        if (S_ISDIR(mode))
+//            vap->va_mode |= S_ISGID;
+//    } else {
+//        vap->va_gid = crgetfsgid(cr);
+//    }
+//}
 
-    if (dir && dir->i_mode & S_ISGID) {
-        vap->va_gid = KGID_TO_SGID(dir->i_gid);
-        if (S_ISDIR(mode))
-            vap->va_mode |= S_ISGID;
-    } else {
-        vap->va_gid = crgetfsgid(cr);
-    }
+ssize_t generic_getxattr(struct dentry *dentry, const char *name, void *buffer, size_t size)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int generic_removexattr(struct dentry *dentry, const char *name)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int generic_readlink(struct dentry *dentry, char *buffer, int buflen)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+struct dentry *d_add_ci(struct dentry *dentry, struct inode *inode, struct qstr *name)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return NULL;
+}
+
+int d_invalidate(struct dentry *dentry)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int inode_change_ok(const struct inode *inode, struct iattr *attr)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+int zpl_xattr_security_init(struct inode *ip, struct inode *dip, const struct qstr *qstr)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
+}
+
+ssize_t zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+{
+    printf("%s\n", __func__);
+    ASSERT(0);
+    return 0;
 }
 

@@ -585,7 +585,7 @@ extern void delay(clock_t ticks);
 #define	CPU_SEQID	((uintptr_t)pthread_self() & (max_ncpus - 1))
 #define	CPU_SEQID_UNSTABLE	CPU_SEQID
 
-#define	kcred		NULL
+//#define	kcred		NULL
 #define	CRED()		NULL
 
 #define	ptob(x)		((x) * PAGESIZE)

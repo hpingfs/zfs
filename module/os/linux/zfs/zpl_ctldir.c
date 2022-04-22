@@ -31,10 +31,9 @@
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_vnops.h>
 #include <sys/zfs_ctldir.h>
-
-#ifdef _KERNEL
 #include <sys/zpl.h>
-#else
+
+#ifndef _KERNEL
 #define kstat linux_kstat
 #endif
 

@@ -195,7 +195,8 @@ KERNEL_C = \
 	uzfs.c \
 	uspl.c \
 	dataset_kstats.c \
-	zpl_ctldir.c
+	zpl_ctldir.c \
+	zpl_inode.c
 
 LUA_C = \
 	lapi.c \

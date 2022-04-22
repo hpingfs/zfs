@@ -27,6 +27,8 @@
 
 #include <sys/mntent.h>
 #include <sys/vfs.h>
+
+#ifdef _KERNEL
 #include <linux/aio.h>
 #include <linux/dcache_compat.h>
 #include <linux/exportfs.h>
@@ -36,6 +38,10 @@
 #include <linux/vfs_compat.h>
 #include <linux/writeback.h>
 #include <linux/xattr_compat.h>
+#else
+#define true B_TRUE
+#define false B_FALSE
+#endif
 
 /* zpl_inode.c */
 extern void zpl_vap_init(vattr_t *vap, struct inode *dir,
@@ -141,15 +147,15 @@ zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen,
 static inline bool
 zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx)
 {
-	return (ctx->actor(ctx->dirent, ".", 1, ctx->pos,
-	    file_inode(file)->i_ino, DT_DIR) == 0);
+	return (ctx->actor(ctx->dirent, ".", 1, ctx->pos, file_inode(file)->i_ino, DT_DIR) == 0);
 }
 
 static inline bool
 zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx)
 {
-	return (ctx->actor(ctx->dirent, "..", 2, ctx->pos,
-	    parent_ino(file_dentry(file)), DT_DIR) == 0);
+    // FIXME(hping)
+	//return (ctx->actor(ctx->dirent, "..", 2, ctx->pos, parent_ino(file_dentry(file)), DT_DIR) == 0);
+	return (ctx->actor(ctx->dirent, "..", 2, ctx->pos, file_inode(file)->i_ino, DT_DIR) == 0);
 }
 
 static inline bool

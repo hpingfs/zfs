@@ -64,13 +64,13 @@
 #include <sys/cred.h>
 #include <sys/zil.h>
 #include <sys/sa_impl.h>
+#include <sys/zpl.h>
 
 #ifdef _KERNEL
 #include <sys/vmsystm.h>
 #include <sys/taskq.h>
 #include <sys/atomic.h>
 #include <sys/sid.h>
-#include <sys/zpl.h>
 #endif
 /*
  * Programming rules.
@@ -1521,16 +1521,14 @@ int zfs_readdir_common(char* fsname, char* path) {
         struct file f;
         f.f_inode = dir_inode;
         f.f_pos = 0;
-        filldir_t t;
-        zpl_root_readdir(&f, NULL, t);
+        zpl_root_readdir(&f, NULL, uzfs_dir_emit);
     } else if (is_ctldir_snapshot) {
         struct file f;
         f.f_inode = dir_inode;
         f.f_pos = 0;
-        filldir_t t;
-        zpl_snapdir_readdir(&f, NULL, t);
+        zpl_snapdir_readdir(&f, NULL, uzfs_dir_emit);
     } else {
-        zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(NULL, NULL, 0);
+        zpl_dir_context_t ctx = ZPL_DIR_CONTEXT_INIT(NULL, uzfs_dir_emit, 0);
 
         error = zfs_readdir(dir_inode, &ctx, NULL);
         if (error) return error;

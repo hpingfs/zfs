@@ -46,10 +46,10 @@
 #include <sys/zfs_ctldir.h>
 #include <sys/dnode.h>
 #include <sys/fs/zfs.h>
+#include <sys/zpl.h>
 
 #ifdef _KERNEL
 #include <sys/atomic.h>
-#include <sys/zpl.h>
 #endif /* _KERNEL */
 
 #include <sys/dmu.h>

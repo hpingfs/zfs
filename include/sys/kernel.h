@@ -27,6 +27,7 @@
 #include <sys/mount.h>
 #include <sys/gfp.h>
 #include <sys/vnode.h>
+#include <linux/path.h>
 
 #define WARN_ON(s) ASSERT(!(s))
 
@@ -45,11 +46,18 @@ typedef struct znode znode_t;
 typedef struct objset objset_t;
 typedef struct zfs_cmd zfs_cmd_t;
 
+typedef boolean_t bool;
+typedef struct zpl_dir_context zpl_dir_context_t;
+
 struct path;
 struct file;
 struct inode;
+struct iattr;
 
-typedef struct filldir {} filldir_t;
+typedef int (*filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
+int uzfs_dir_emit(void *ctx, const char *name, int namelen, loff_t off, uint64_t ino, unsigned type);
+
+#if 0
 typedef struct zpl_dir_context {
     void *dirent;
     const filldir_t actor;
@@ -59,6 +67,7 @@ typedef struct zpl_dir_context {
 #define ZPL_DIR_CONTEXT_INIT(_dirent, _actor, _pos) {   \
     .pos = _pos,                    \
 }
+#endif
 
 typedef	int	umode_t;
 
@@ -97,11 +106,53 @@ struct linux_kstat {
     unsigned long long  blocks;
 };
 
+/* The hash is always the low bits of hash_len */
+#ifdef __LITTLE_ENDIAN
+ #define HASH_LEN_DECLARE u32 hash; u32 len;
+ #define bytemask_from_count(cnt)   (~(~0ul << (cnt)*8))
+#else
+ #define HASH_LEN_DECLARE u32 len; u32 hash;
+ #define bytemask_from_count(cnt)   (~(~0ul >> (cnt)*8))
+#endif
+
+/*
+ * "quick string" -- eases parameter passing, but more importantly
+ * saves "metadata" about the string (ie length and the hash).
+ *
+ * hash comes first so it snuggles against d_parent in the
+ * dentry.
+ */
+struct qstr {
+    union {
+        struct {
+            HASH_LEN_DECLARE;
+        };
+        u64 hash_len;
+    };
+    const unsigned char *name;
+};
+
+enum { MAX_NESTED_LINKS = 8 };
+
+struct nameidata {
+    struct path path;
+    struct qstr last;
+    struct path root;
+    struct inode    *inode; /* path.dentry.d_inode */
+    unsigned int    flags;
+    unsigned    seq;
+    int     last_type;
+    unsigned    depth;
+    char *saved_names[MAX_NESTED_LINKS + 1];
+//    RH_KABI_EXTEND(unsigned  m_seq)
+};
+
 struct user_namespace {};
 struct file_system_type {};
 struct super_operations {};
 struct export_operations {};
 struct xattr_handler {};
+typedef const struct xattr_handler  xattr_handler_t;
 
 
 struct dentry_operations {
@@ -155,27 +206,27 @@ struct file_operations {
 
 struct inode_operations {
     struct dentry * (*lookup) (struct inode *,struct dentry *, unsigned int);
-//    void * (*follow_link) (struct dentry *, struct nameidata *);
+    void * (*follow_link) (struct dentry *, struct nameidata *);
 //    int (*permission) (struct inode *, int);
 //    struct posix_acl * (*get_acl)(struct inode *, int);
 //
-//    int (*readlink) (struct dentry *, char __user *,int);
-//    void (*put_link) (struct dentry *, struct nameidata *, void *);
-//
-//    int (*create) (struct inode *,struct dentry *, umode_t, bool);
-//    int (*link) (struct dentry *,struct inode *,struct dentry *);
-//    int (*unlink) (struct inode *,struct dentry *);
-//    int (*symlink) (struct inode *,struct dentry *,const char *);
+    int (*readlink) (struct dentry *, char *,int);
+    void (*put_link) (struct dentry *, struct nameidata *, void *);
+
+    int (*create) (struct inode *,struct dentry *, umode_t, bool);
+    int (*link) (struct dentry *,struct inode *,struct dentry *);
+    int (*unlink) (struct inode *,struct dentry *);
+    int (*symlink) (struct inode *,struct dentry *,const char *);
     int (*mkdir) (struct inode *,struct dentry *,umode_t);
     int (*rmdir) (struct inode *,struct dentry *);
-//    int (*mknod) (struct inode *,struct dentry *,umode_t,dev_t);
+    int (*mknod) (struct inode *,struct dentry *,umode_t,dev_t);
     int (*rename) (struct inode *, struct dentry *, struct inode *, struct dentry *);
-//    int (*setattr) (struct dentry *, struct iattr *);
+    int (*setattr) (struct dentry *, struct iattr *);
     int (*getattr) (struct vfsmount *mnt, struct dentry *, struct linux_kstat *);
-//    int (*setxattr) (struct dentry *, const char *,const void *,size_t,int);
-//    ssize_t (*getxattr) (struct dentry *, const char *, void *, size_t);
-//    ssize_t (*listxattr) (struct dentry *, char *, size_t);
-//    int (*removexattr) (struct dentry *, const char *);
+    int (*setxattr) (struct dentry *, const char *,const void *,size_t,int);
+    ssize_t (*getxattr) (struct dentry *, const char *, void *, size_t);
+    ssize_t (*listxattr) (struct dentry *, char *, size_t);
+    int (*removexattr) (struct dentry *, const char *);
 //    int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
 //              u64 len);
 //    int (*update_time)(struct inode *, struct timespec *, int);
@@ -237,7 +288,24 @@ typedef struct {
 
 
 #define jiffies 0
-#define time_after(m,n) (0)
+
+/*
+ * Check at compile time that something is of a particular type.
+ * Always evaluates to 1 so you may use it easily in comparisons.
+ */
+#define typecheck(type,x) \
+({  type __dummy; \
+    typeof(x) __dummy2; \
+    (void)(&__dummy == &__dummy2); \
+    1; \
+})
+
+#define time_after(a,b)     \
+    (typecheck(unsigned long, a) && \
+     typecheck(unsigned long, b) && \
+     ((long)((b) - (a)) < 0))
+#define time_before(a,b)    time_after(b,a)
+
 
 static inline void task_io_account_read(int64_t n) {}
 static inline void task_io_account_write(int64_t n) {}
@@ -327,12 +395,15 @@ struct cred {
 //	void		*security;	/* subjective LSM security */
 //#endif
 //	struct user_struct *user;	/* real user ID subscription */
-//	struct user_namespace *user_ns; /* user_ns the caps and keyrings are relative to. */
+	struct user_namespace *user_ns; /* user_ns the caps and keyrings are relative to. */
 //	struct group_info *group_info;	/* supplementary groups for euid/fsgid */
 //	struct rcu_head	rcu;		/* RCU deletion hook */
 //
 //	RH_KABI_EXTEND(kernel_cap_t cap_ambient)  /* Ambient capability set */
 };
+
+extern struct cred global_cred;
+extern struct cred *kcred;
 
 /* Page cache limit. The filesystems should put that into their s_maxbytes
    limits, otherwise bad things can happen in VM. */
@@ -680,30 +751,24 @@ struct inode {
 #define DCACHE_MANAGED_DENTRY \
     (DCACHE_MOUNTED|DCACHE_NEED_AUTOMOUNT|DCACHE_MANAGE_TRANSIT)
 
-/* The hash is always the low bits of hash_len */
-#ifdef __LITTLE_ENDIAN
- #define HASH_LEN_DECLARE u32 hash; u32 len;
- #define bytemask_from_count(cnt)   (~(~0ul << (cnt)*8))
-#else
- #define HASH_LEN_DECLARE u32 len; u32 hash;
- #define bytemask_from_count(cnt)   (~(~0ul >> (cnt)*8))
-#endif
+#define d_lock  d_lockref.lock
 
-/*
- * "quick string" -- eases parameter passing, but more importantly
- * saves "metadata" about the string (ie length and the hash).
- *
- * hash comes first so it snuggles against d_parent in the
- * dentry.
- */
-struct qstr {
+struct lockref {
     union {
+#if defined(CONFIG_PPC64) || defined(CONFIG_S390)
+#ifdef CONFIG_CMPXCHG_LOCKREF
+        RH_KABI_EXTEND(aligned_u64 lock_count)
+#endif
+#else /* CONFIG_PPC64 || CONFIG_S390 */
+#ifdef CONFIG_CMPXCHG_LOCKREF
+            aligned_u64 lock_count;
+#endif
+#endif /* CONFIG_PPC64 */
         struct {
-            HASH_LEN_DECLARE;
+            spinlock_t lock;
+            unsigned int count;
         };
-        u64 hash_len;
     };
-    const unsigned char *name;
 };
 
 struct dentry {
@@ -711,17 +776,17 @@ struct dentry {
     unsigned int d_flags;       /* protected by d_lock */
 //    seqcount_t d_seq;       /* per dentry seqlock */
 //    struct hlist_bl_node d_hash;    /* lookup hash list */
-//    struct dentry *d_parent;    /* parent directory */
+    struct dentry *d_parent;    /* parent directory */
     struct qstr d_name;
     struct inode *d_inode;      /* Where the name belongs to - NULL is
 //                     * negative */
 //    unsigned char d_iname[DNAME_INLINE_LEN];    /* small names */
 //
 //    /* Ref lookup also touches following */
-//    struct lockref d_lockref;   /* per-dentry lock and refcount */
+    struct lockref d_lockref;   /* per-dentry lock and refcount */
     const struct dentry_operations *d_op;
-//    struct super_block *d_sb;   /* The root of the dentry tree */
-//    unsigned long d_time;       /* used by d_revalidate */
+    struct super_block *d_sb;   /* The root of the dentry tree */
+    unsigned long d_time;       /* used by d_revalidate */
 //    void *d_fsdata;         /* fs-specific data */
 //
 //    struct list_head d_lru;     /* LRU list */
@@ -792,6 +857,33 @@ struct file {
 //#endif
 };
 
+/*
+ * This is the Inode Attributes structure, used for notify_change().  It
+ * uses the above definitions as flags, to know which values have changed.
+ * Also, in this manner, a Filesystem can look at only the values it cares
+ * about.  Basically, these are the attributes that the VFS layer can
+ * request to change from the FS layer.
+ *
+ * Derek Atkins <warlord@MIT.EDU> 94-10-20
+ */
+struct iattr {
+    unsigned int    ia_valid;
+    umode_t     ia_mode;
+    kuid_t      ia_uid;
+    kgid_t      ia_gid;
+    loff_t      ia_size;
+    struct timespec ia_atime;
+    struct timespec ia_mtime;
+    struct timespec ia_ctime;
+
+    /*
+     * Not an attribute, but an auxiliary info for filesystems wanting to
+     * implement an ftruncate() like method.  NOTE: filesystem should
+     * check for (ia_valid & ATTR_FILE), and not for (ia_file != NULL).
+     */
+    struct file *ia_file;
+};
+
 static inline struct inode *file_inode(const struct file *f)
 {
     return f->f_inode;
@@ -827,8 +919,8 @@ extern struct dentry *d_make_root(struct inode *root_inode);
 extern void d_prune_aliases(struct inode *inode);
 extern void shrink_dcache_sb(struct super_block *sb);
 
-extern boolean_t
-zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type);
+//extern boolean_t
+//zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type);
 
 extern void update_pages(znode_t *zp, int64_t start, int len, objset_t *os);
 extern int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio);
@@ -886,9 +978,9 @@ extern void path_put(const struct path *path);
 
 extern int generic_file_open(struct inode * inode, struct file * filp);
 
-boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx);
-boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx);
-boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx);
+//boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx);
+//boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx);
+//boolean_t zpl_dir_emit_dots(struct file *file, zpl_dir_context_t *ctx);
 int zpl_root_readdir(struct file *filp, void *dirent, filldir_t filldir);
 extern void generic_fillattr(struct inode *, struct linux_kstat *);
 
@@ -926,7 +1018,7 @@ d_clear_d_op(struct dentry *dentry)
 extern void d_set_d_op(struct dentry *dentry, const struct dentry_operations *op);
 extern void d_instantiate(struct dentry *, struct inode *);
 
-extern void zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr);
+//extern void zpl_vap_init(vattr_t *vap, struct inode *dir, umode_t mode, cred_t *cr);
 
 extern loff_t generic_file_llseek(struct file *file, loff_t offset, int whence);
 extern ssize_t generic_read_dir(struct file *, char *, size_t, loff_t *);
@@ -983,5 +1075,86 @@ func(struct user_namespace *user_ns, const struct path *path,   \
 #endif
 
 extern int zpl_snapdir_readdir(struct file *filp, void *dirent, filldir_t filldir);
+
+/*
+ * The bitmask for a lookup event:
+ *  - follow links at the end
+ *  - require a directory
+ *  - ending slashes ok even for nonexistent files
+ *  - internal "there are more path components" flag
+ *  - dentry cache is untrusted; force a real lookup
+ *  - suppress terminal automount
+ *  - skip revalidation
+ *  - don't fetch xattrs on audit_inode
+ */
+#define LOOKUP_FOLLOW       0x0001
+#define LOOKUP_DIRECTORY    0x0002
+#define LOOKUP_AUTOMOUNT    0x0004
+
+#define LOOKUP_PARENT       0x0010
+#define LOOKUP_REVAL        0x0020
+#define LOOKUP_RCU      0x0040
+#define LOOKUP_NO_EVAL      0x0100
+
+/*
+ * Intent data
+ */
+#define LOOKUP_OPEN     0x0100
+#define LOOKUP_CREATE       0x0200
+#define LOOKUP_EXCL     0x0400
+#define LOOKUP_RENAME_TARGET    0x0800
+
+#define LOOKUP_JUMPED       0x1000
+#define LOOKUP_ROOT     0x2000
+#define LOOKUP_EMPTY        0x4000
+#define LOOKUP_DOWN     0x8000
+
+extern ssize_t generic_getxattr(struct dentry *dentry, const char *name, void *buffer, size_t size);
+extern ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size);
+extern int generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
+extern int generic_removexattr(struct dentry *dentry, const char *name);
+
+extern int generic_readlink(struct dentry *, char *, int);
+extern struct dentry * d_add_ci(struct dentry *, struct inode *, struct qstr *);
+extern int d_invalidate(struct dentry *dentry);
+
+static inline char *nd_get_link(struct nameidata *nd)
+{
+    return nd->saved_names[nd->depth];
+}
+
+static inline void nd_set_link(struct nameidata *nd, char *path)
+{
+    nd->saved_names[nd->depth] = path;
+}
+
+static inline ino_t parent_ino(struct dentry *dentry)
+{
+    ino_t res;
+
+    /*
+     * Don't strictly need d_lock here? If the parent ino could change
+     * then surely we'd have a deeper race in the caller?
+     */
+// FIXME(hping)
+//    spin_lock(&dentry->d_lock);
+    res = dentry->d_parent->d_inode->i_ino;
+//    spin_unlock(&dentry->d_lock);
+    return res;
+}
+
+static inline struct dentry *file_dentry(const struct file *file)
+{
+    return NULL;
+    //return d_real(file->f_path.dentry, file_inode(file), 0, 0);
+}
+
+extern int inode_change_ok(const struct inode *, struct iattr *);
+
+static inline int
+setattr_prepare(struct dentry *dentry, struct iattr *ia)
+{
+    return (inode_change_ok(dentry->d_inode, ia));
+}
 
 #endif	/* _SYS_KERNEL_H */

@@ -30,8 +30,8 @@
 #include <sys/zfs_znode.h>
 #include <sys/dmu_objset.h>
 #include <sys/vfs.h>
-#include <sys/zpl.h>
 #include <sys/file.h>
+#include <sys/zpl.h>
 
 
 static struct dentry *
