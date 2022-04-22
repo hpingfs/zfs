@@ -31,11 +31,8 @@
 #include <sys/fcntl.h>
 #include <sys/pathname.h>
 #include <sys/zfs_file.h>
-
-#ifdef _KERNEL
 #include <sys/xvattr.h>
 #include <sys/zpl.h>
-#endif
 
 #ifdef	__cplusplus
 extern "C" {

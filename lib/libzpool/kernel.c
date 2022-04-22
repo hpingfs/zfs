@@ -2297,20 +2297,6 @@ int inode_change_ok(const struct inode *inode, struct iattr *attr)
     return 0;
 }
 
-int zpl_xattr_security_init(struct inode *ip, struct inode *dip, const struct qstr *qstr)
-{
-    printf("%s\n", __func__);
-    ASSERT(0);
-    return 0;
-}
-
-ssize_t zpl_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
-{
-    printf("%s\n", __func__);
-    ASSERT(0);
-    return 0;
-}
-
 ssize_t do_sync_read(struct file *filp, char *buf, size_t len, loff_t *ppos)
 {
     printf("%s\n", __func__);

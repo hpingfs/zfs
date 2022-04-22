@@ -155,7 +155,17 @@ struct user_namespace {};
 struct file_system_type {};
 struct super_operations {};
 struct export_operations {};
-struct xattr_handler {};
+
+struct xattr_handler {
+    const char *prefix;
+    int flags;  /* fs private flags passed back to the handlers */
+    size_t (*list)(struct dentry *dentry, char *list, size_t list_size,
+               const char *name, size_t name_len, int handler_flags);
+    int (*get)(struct dentry *dentry, const char *name, void *buffer,
+           size_t size, int handler_flags);
+    int (*set)(struct dentry *dentry, const char *name, const void *buffer,
+           size_t size, int flags, int handler_flags);
+};
 typedef const struct xattr_handler  xattr_handler_t;
 
 
@@ -1476,5 +1486,241 @@ lseek_execute(
 #define IS_WHITEOUT(inode)  (S_ISCHR(inode->i_mode) && \
                  (inode)->i_rdev == WHITEOUT_DEV)
 
+
+#define XATTR_CREATE    0x1 /* set value, fail if attr already exists */
+#define XATTR_REPLACE   0x2 /* set value, fail if attr does not exist */
+
+/* Namespaces */
+#define XATTR_OS2_PREFIX "os2."
+#define XATTR_OS2_PREFIX_LEN (sizeof(XATTR_OS2_PREFIX) - 1)
+
+#define XATTR_MAC_OSX_PREFIX "osx."
+#define XATTR_MAC_OSX_PREFIX_LEN (sizeof(XATTR_MAC_OSX_PREFIX) - 1)
+
+#define XATTR_BTRFS_PREFIX "btrfs."
+#define XATTR_BTRFS_PREFIX_LEN (sizeof(XATTR_BTRFS_PREFIX) - 1)
+
+#define XATTR_SECURITY_PREFIX   "security."
+#define XATTR_SECURITY_PREFIX_LEN (sizeof(XATTR_SECURITY_PREFIX) - 1)
+
+#define XATTR_SYSTEM_PREFIX "system."
+#define XATTR_SYSTEM_PREFIX_LEN (sizeof(XATTR_SYSTEM_PREFIX) - 1)
+
+#define XATTR_TRUSTED_PREFIX "trusted."
+#define XATTR_TRUSTED_PREFIX_LEN (sizeof(XATTR_TRUSTED_PREFIX) - 1)
+
+#define XATTR_USER_PREFIX "user."
+#define XATTR_USER_PREFIX_LEN (sizeof(XATTR_USER_PREFIX) - 1)
+
+/* Security namespace */
+#define XATTR_EVM_SUFFIX "evm"
+#define XATTR_NAME_EVM XATTR_SECURITY_PREFIX XATTR_EVM_SUFFIX
+
+#define XATTR_IMA_SUFFIX "ima"
+#define XATTR_NAME_IMA XATTR_SECURITY_PREFIX XATTR_IMA_SUFFIX
+
+#define XATTR_SELINUX_SUFFIX "selinux"
+#define XATTR_NAME_SELINUX XATTR_SECURITY_PREFIX XATTR_SELINUX_SUFFIX
+
+#define XATTR_SMACK_SUFFIX "SMACK64"
+#define XATTR_SMACK_IPIN "SMACK64IPIN"
+#define XATTR_SMACK_IPOUT "SMACK64IPOUT"
+#define XATTR_SMACK_EXEC "SMACK64EXEC"
+#define XATTR_SMACK_TRANSMUTE "SMACK64TRANSMUTE"
+#define XATTR_SMACK_MMAP "SMACK64MMAP"
+#define XATTR_NAME_SMACK XATTR_SECURITY_PREFIX XATTR_SMACK_SUFFIX
+#define XATTR_NAME_SMACKIPIN    XATTR_SECURITY_PREFIX XATTR_SMACK_IPIN
+#define XATTR_NAME_SMACKIPOUT   XATTR_SECURITY_PREFIX XATTR_SMACK_IPOUT
+#define XATTR_NAME_SMACKEXEC    XATTR_SECURITY_PREFIX XATTR_SMACK_EXEC
+#define XATTR_NAME_SMACKTRANSMUTE XATTR_SECURITY_PREFIX XATTR_SMACK_TRANSMUTE
+#define XATTR_NAME_SMACKMMAP XATTR_SECURITY_PREFIX XATTR_SMACK_MMAP
+
+#define XATTR_CAPS_SUFFIX "capability"
+#define XATTR_NAME_CAPS XATTR_SECURITY_PREFIX XATTR_CAPS_SUFFIX
+
+#define XATTR_POSIX_ACL_ACCESS  "posix_acl_access"
+#define XATTR_NAME_POSIX_ACL_ACCESS XATTR_SYSTEM_PREFIX XATTR_POSIX_ACL_ACCESS
+#define XATTR_POSIX_ACL_DEFAULT  "posix_acl_default"
+#define XATTR_NAME_POSIX_ACL_DEFAULT XATTR_SYSTEM_PREFIX XATTR_POSIX_ACL_DEFAULT
+
+/*
+ * 4.5 API change,
+ */
+#if defined(HAVE_XATTR_LIST_SIMPLE)
+#define ZPL_XATTR_LIST_WRAPPER(fn)                  \
+static bool                             \
+fn(struct dentry *dentry)                       \
+{                                   \
+    return (!!__ ## fn(dentry->d_inode, NULL, 0, NULL, 0));     \
+}
+/*
+ * 4.4 API change,
+ */
+#elif defined(HAVE_XATTR_LIST_DENTRY)
+#define ZPL_XATTR_LIST_WRAPPER(fn)                  \
+static size_t                               \
+fn(struct dentry *dentry, char *list, size_t list_size,         \
+    const char *name, size_t name_len, int type)            \
+{                                   \
+    return (__ ## fn(dentry->d_inode,               \
+        list, list_size, name, name_len));              \
+}
+/*
+ * 2.6.33 API change,
+ */
+#elif defined(HAVE_XATTR_LIST_HANDLER)
+#define ZPL_XATTR_LIST_WRAPPER(fn)                  \
+static size_t                               \
+fn(const struct xattr_handler *handler, struct dentry *dentry,      \
+    char *list, size_t list_size, const char *name, size_t name_len)    \
+{                                   \
+    return (__ ## fn(dentry->d_inode,               \
+        list, list_size, name, name_len));              \
+}
+#else
+#error "Unsupported kernel"
+#endif
+
+/*
+ * 4.7 API change,
+ * The xattr_handler->get() callback was changed to take a both dentry and
+ * inode, because the dentry might not be attached to an inode yet.
+ */
+#if defined(HAVE_XATTR_GET_DENTRY_INODE)
+#define ZPL_XATTR_GET_WRAPPER(fn)                   \
+static int                              \
+fn(const struct xattr_handler *handler, struct dentry *dentry,      \
+    struct inode *inode, const char *name, void *buffer, size_t size)   \
+{                                   \
+    return (__ ## fn(inode, name, buffer, size));           \
+}
+/*
+ * 4.4 API change,
+ * The xattr_handler->get() callback was changed to take a xattr_handler,
+ * and handler_flags argument was removed and should be accessed by
+ * handler->flags.
+ */
+#elif defined(HAVE_XATTR_GET_HANDLER)
+#define ZPL_XATTR_GET_WRAPPER(fn)                   \
+static int                              \
+fn(const struct xattr_handler *handler, struct dentry *dentry,      \
+    const char *name, void *buffer, size_t size)            \
+{                                   \
+    return (__ ## fn(dentry->d_inode, name, buffer, size));     \
+}
+/*
+ * 2.6.33 API change,
+ * The xattr_handler->get() callback was changed to take a dentry
+ * instead of an inode, and a handler_flags argument was added.
+ */
+#elif defined(HAVE_XATTR_GET_DENTRY)
+#define ZPL_XATTR_GET_WRAPPER(fn)                   \
+static int                              \
+fn(struct dentry *dentry, const char *name, void *buffer, size_t size,  \
+    int unused_handler_flags)                       \
+{                                   \
+    return (__ ## fn(dentry->d_inode, name, buffer, size));     \
+}
+#else
+#error "Unsupported kernel"
+#endif
+
+/*
+ * 5.12 API change,
+ * The xattr_handler->set() callback was changed to take the
+ * struct user_namespace* as the first arg, to support idmapped
+ * mounts.
+ */
+#if defined(HAVE_XATTR_SET_USERNS)
+#define ZPL_XATTR_SET_WRAPPER(fn)                   \
+static int                              \
+fn(const struct xattr_handler *handler, struct user_namespace *user_ns, \
+    struct dentry *dentry, struct inode *inode, const char *name,   \
+    const void *buffer, size_t size, int flags) \
+{                                   \
+    return (__ ## fn(inode, name, buffer, size, flags));        \
+}
+/*
+ * 4.7 API change,
+ * The xattr_handler->set() callback was changed to take a both dentry and
+ * inode, because the dentry might not be attached to an inode yet.
+ */
+#elif defined(HAVE_XATTR_SET_DENTRY_INODE)
+#define ZPL_XATTR_SET_WRAPPER(fn)                   \
+static int                              \
+fn(const struct xattr_handler *handler, struct dentry *dentry,      \
+    struct inode *inode, const char *name, const void *buffer,      \
+    size_t size, int flags)                     \
+{                                   \
+    return (__ ## fn(inode, name, buffer, size, flags));        \
+}
+/*
+ * 4.4 API change,
+ * The xattr_handler->set() callback was changed to take a xattr_handler,
+ * and handler_flags argument was removed and should be accessed by
+ * handler->flags.
+ */
+#elif defined(HAVE_XATTR_SET_HANDLER)
+#define ZPL_XATTR_SET_WRAPPER(fn)                   \
+static int                              \
+fn(const struct xattr_handler *handler, struct dentry *dentry,      \
+    const char *name, const void *buffer, size_t size, int flags)   \
+{                                   \
+    return (__ ## fn(dentry->d_inode, name, buffer, size, flags));  \
+}
+/*
+ * 2.6.33 API change,
+ * The xattr_handler->set() callback was changed to take a dentry
+ * instead of an inode, and a handler_flags argument was added.
+ */
+#elif defined(HAVE_XATTR_SET_DENTRY)
+#define ZPL_XATTR_SET_WRAPPER(fn)                   \
+static int                              \
+fn(struct dentry *dentry, const char *name, const void *buffer,     \
+    size_t size, int flags, int unused_handler_flags)           \
+{                                   \
+    return (__ ## fn(dentry->d_inode, name, buffer, size, flags));  \
+}
+#else
+#error "Unsupported kernel"
+#endif
+
+#define CAP_SYS_ADMIN        21
+
+struct xattr {
+    const char *name;
+    void *value;
+    size_t value_len;
+};
+
+/* security_inode_init_security callback function to write xattrs */
+typedef int (*initxattrs) (struct inode *inode, const struct xattr *xattr_array, void *fs_data);
+
+static inline int security_inode_init_security(struct inode *inode,
+                        struct inode *dir,
+                        const struct qstr *qstr,
+                        const initxattrs initxattrs,
+                        void *fs_data)
+{
+    return 0;
+}
+
+#define cmpxchg(a,b,c) atomic_cas_ptr(a,b,c)
+#define xchg(a,b) atomic_swap_ptr(a,b)
+
+#define READ_ONCE(x) (x)
+
+/* REP NOP (PAUSE) is a good thing to insert into busy-wait loops. */
+static inline void rep_nop(void)
+{
+    asm volatile("rep; nop" ::: "memory");
+}
+
+static inline void cpu_relax(void)
+{
+    rep_nop();
+}
+
+#define kfree(m) free(m)
 
 #endif	/* _SYS_KERNEL_H */
