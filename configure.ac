@@ -72,6 +72,7 @@ AC_CONFIG_FILES([
 	cmd/dbufstat/Makefile
 	cmd/fsck_zfs/Makefile
 	cmd/mount_zfs/Makefile
+	cmd/uzfs/Makefile
 	cmd/raidz_test/Makefile
 	cmd/vdev_id/Makefile
 	cmd/zdb/Makefile
@@ -161,6 +162,7 @@ AC_CONFIG_FILES([
 	lib/libtpool/Makefile
 	lib/libunicode/Makefile
 	lib/libuutil/Makefile
+	lib/libuzfs/Makefile
 	lib/libzfs/Makefile
 	lib/libzfs/libzfs.pc
 	lib/libzfsbootenv/Makefile

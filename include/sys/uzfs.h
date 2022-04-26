@@ -72,4 +72,24 @@ void zpl_bdi_destroy(struct super_block *sb);
 
 extern void zpl_generic_fillattr(struct user_namespace *user_ns, struct inode *inode, struct linux_kstat *stat);
 
+int uzfs_stat(const char *fsname, const char* path, struct stat *buf);
+
+int uzfs_init(const char* fsname);
+int uzfs_fini(const char* fsname);
+
+int uzfs_getroot(const char *fsname, uint64_t* ino);
+int uzfs_getattr(uint64_t ino, struct stat* stat);
+int uzfs_setattr(uint64_t ino, struct iattr* attr);
+int uzfs_lookup(uint64_t dino, const char* name, uint64_t* ino);
+int uzfs_mkdir(uint64_t dino, const char* name, umode_t mode, uint64_t *ino);
+int uzfs_rmdir(uint64_t dino, const char* name);
+//int uzfs_readdir(uint64_t dino, struct linux_dirent *dirp, uint64_t count);
+int uzfs_create(uint64_t dino, const char* name, umode_t mode, uint64_t *ino);
+int uzfs_remove(uint64_t dino, const char* name);
+int uzfs_rename(uint64_t sdino, const char* sname, uint64_t tdino, const char* tname);
+
+int uzfs_read(uint64_t ino, zfs_uio_t *uio, int ioflag);
+int uzfs_write(uint64_t ino, zfs_uio_t *uio, int ioflag);
+int uzfs_fsync(uint64_t ino, int syncflag);
+
 #endif	/* _SYS_UZFS_H */

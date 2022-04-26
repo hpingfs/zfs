@@ -366,7 +366,7 @@ zpl_rmdir(struct inode *dir, struct dentry *dentry)
 	return (error);
 }
 
-static int
+int
 #ifdef HAVE_USERNS_IOPS_GETATTR
 zpl_getattr_impl(struct user_namespace *user_ns,
     const struct path *path, struct kstat *stat, u32 request_mask,

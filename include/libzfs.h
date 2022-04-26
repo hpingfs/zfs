@@ -482,6 +482,10 @@ _LIBZFS_H int zpool_checkpoint(zpool_handle_t *);
 _LIBZFS_H int zpool_discard_checkpoint(zpool_handle_t *);
 _LIBZFS_H boolean_t zpool_is_draid_spare(const char *);
 
+#define zfs_open(a,b,c) libzfs_open(a,b,c)
+#define zfs_close(a) libzfs_close(a)
+#define zfs_rename(a,b,c) libzfs_rename(a,b,c)
+
 /*
  * Basic handle manipulations.  These functions do not create or destroy the
  * underlying datasets, only the references to them.

@@ -16,8 +16,8 @@ SUBDIRS += arcstat arc_summary dbufstat
 endif
 
 if BUILD_LINUX
-SUBDIRS += mount_zfs zed zgenhostid zvol_id zvol_wait
-CPPCHECKDIRS += mount_zfs zed zgenhostid zvol_id
+SUBDIRS += mount_zfs zed zgenhostid zvol_id zvol_wait uzfs
+CPPCHECKDIRS += mount_zfs zed zgenhostid zvol_id uzfs
 SHELLCHECKDIRS += zed
 endif
 

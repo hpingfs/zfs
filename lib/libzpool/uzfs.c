@@ -43,11 +43,15 @@
 #include <sys/zfs_context.h>
 #include <sys/zfs_onexit.h>
 #include <sys/zfs_vfsops.h>
+#include <sys/zfs_vnops.h>
 #include <sys/zfs_znode.h>
+#include <sys/dmu_objset.h>
 #include <sys/zstd/zstd.h>
 #include <sys/zvol.h>
 #include <zfs_fletcher.h>
 #include <zlib.h>
+
+#include <sys/zpl.h>
 
 int zvol_init(void) { return 0; }
 void zvol_fini(void) {}
@@ -108,3 +112,377 @@ void zpl_generic_fillattr(struct user_namespace *user_ns, struct inode *inode, s
     stat->blksize = (1 << inode->i_blkbits);
     stat->blocks = inode->i_blocks;
 }
+
+static int cp_new_stat(struct kstat *stat, struct stat *statbuf)
+{
+    struct stat tmp;
+
+//    if (!valid_dev(stat->dev) || !valid_dev(stat->rdev))
+//        return -EOVERFLOW;
+//#if BITS_PER_LONG == 32
+//    if (stat->size > MAX_NON_LFS)
+//        return -EOVERFLOW;
+//#endif
+
+//    INIT_STRUCT_STAT_PADDING(tmp);
+//    tmp.st_dev = encode_dev(stat->dev);
+    tmp.st_ino = stat->ino;
+    if (sizeof(tmp.st_ino) < sizeof(stat->ino) && tmp.st_ino != stat->ino)
+        return -EOVERFLOW;
+    tmp.st_mode = stat->mode;
+    tmp.st_nlink = stat->nlink;
+    if (tmp.st_nlink != stat->nlink)
+        return -EOVERFLOW;
+    tmp.st_uid = stat->uid;
+    tmp.st_gid = stat->gid;
+//    SET_UID(tmp.st_uid, from_kuid_munged(current_user_ns(), stat->uid));
+//    SET_GID(tmp.st_gid, from_kgid_munged(current_user_ns(), stat->gid));
+//    tmp.st_rdev = encode_dev(stat->rdev);
+    tmp.st_size = stat->size;
+    tmp.st_atime = stat->atime.tv_sec;
+    tmp.st_mtime = stat->mtime.tv_sec;
+    tmp.st_ctime = stat->ctime.tv_sec;
+//#ifdef STAT_HAVE_NSEC
+//    tmp.st_atime_nsec = stat->atime.tv_nsec;
+//    tmp.st_mtime_nsec = stat->mtime.tv_nsec;
+//    tmp.st_ctime_nsec = stat->ctime.tv_nsec;
+//#endif
+    tmp.st_blocks = stat->blocks;
+    tmp.st_blksize = stat->blksize;
+    memcpy(statbuf,&tmp,sizeof(tmp));
+    return 0;
+}
+
+int uzfs_stat(const char *fsname, const char *targetname, struct stat *statbuf)
+{
+    struct linux_kstat stat;
+    memset(&stat, 0, sizeof(struct linux_kstat));
+
+    zfsvfs_t *zfsvfs = NULL;
+	vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+	struct inode *root_inode = NULL;
+    struct super_block* sb = NULL;
+    struct dentry *dentry = NULL;
+    struct path *path = NULL;
+    int error = 0;
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error) goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
+    if (error) goto out;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error) goto out;
+
+    dentry = kmem_zalloc(sizeof(struct dentry), KM_SLEEP);
+    dentry->d_flags = 0;
+    dentry->d_parent = NULL;
+    dentry->d_name.name = targetname;
+    dentry->d_name.len = strlen(targetname);
+    dentry->d_sb = sb;
+    pthread_spin_init(&dentry->d_lock, PTHREAD_PROCESS_PRIVATE);
+
+    if (strcmp(dname(dentry), "/") == 0) {
+        dentry->d_inode = root_inode;
+    } else {
+        ASSERT(root_inode->i_op->lookup(root_inode, dentry, 0) == dentry);
+    }
+
+    path = kmem_zalloc(sizeof(struct path), KM_SLEEP);
+    path->dentry = dentry;
+
+    error = zpl_getattr_impl(path, &stat, 0, 0);
+    if (error) goto out;
+
+    cp_new_stat(&stat, statbuf);
+
+out:
+    if (dentry) {
+        if (dentry->d_inode != root_inode)
+            iput(dentry->d_inode);
+        pthread_spin_destroy(&dentry->d_lock);
+        kmem_free(dentry, sizeof(struct dentry));
+    }
+
+    if (path) {
+        kmem_free(path, sizeof(struct path));
+    }
+
+    if (root_inode) {
+        iput(root_inode);
+    }
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+	os = zfsvfs->z_os;
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+
+    return error;
+}
+
+zfsvfs_t *zfsvfs = NULL;
+
+int uzfs_init(const char* fsname)
+{
+    int error = 0;
+    vfs_t *vfs = NULL;
+    objset_t *os = NULL;
+    struct super_block *sb = NULL;
+
+
+	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
+
+    error = zfsvfs_create(fsname, B_FALSE, &zfsvfs);
+    if (error) goto out;
+
+	vfs->vfs_data = zfsvfs;
+	zfsvfs->z_vfs = vfs;
+
+    sb = kmem_zalloc(sizeof(struct super_block), KM_SLEEP);
+    sb->s_fs_info = zfsvfs;
+
+    zfsvfs->z_sb = sb;
+
+    error = zfsvfs_setup(zfsvfs, B_TRUE);
+    if (error) goto out;
+
+    return 0;
+
+out:
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+    return -1;
+}
+
+int uzfs_fini(const char* fsname)
+{
+    objset_t *os = zfsvfs->z_os;
+    vfs_t *vfs = zfsvfs->z_vfs;
+    struct super_block *sb = zfsvfs->z_sb;
+
+	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
+
+	/*
+	 * z_os will be NULL if there was an error in
+	 * attempting to reopen zfsvfs.
+	 */
+	if (os != NULL) {
+		/*
+		 * Unset the objset user_ptr.
+		 */
+		mutex_enter(&os->os_user_ptr_lock);
+		dmu_objset_set_user(os, NULL);
+		mutex_exit(&os->os_user_ptr_lock);
+
+		/*
+		 * Finally release the objset
+		 */
+		dmu_objset_disown(os, B_TRUE, zfsvfs);
+	}
+
+    if (sb)
+	    kmem_free(sb, sizeof (struct super_block));
+    if(vfs)
+        kmem_free(vfs, sizeof (vfs_t));
+    if(zfsvfs)
+	    kmem_free(zfsvfs, sizeof (zfsvfs_t));
+
+    return 0;
+}
+
+int uzfs_getroot(const char *fsname, uint64_t* ino)
+{
+    int error = 0;
+    struct inode* root_inode = NULL;
+
+    error = zfs_root(zfsvfs, &root_inode);
+    if (error) goto out;
+
+    *ino = root_inode->i_ino;
+
+    iput(root_inode);
+
+out:
+    return error;
+}
+
+int uzfs_getattr(uint64_t ino, struct stat* stat)
+{
+    return 0;
+}
+
+int uzfs_setattr(uint64_t ino, struct iattr* attr)
+{
+    return 0;
+}
+
+int uzfs_lookup(uint64_t dino, const char* name, uint64_t* ino)
+{
+    int error = 0;
+    znode_t *dzp = NULL;
+    znode_t *zp = NULL;
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, dino, &dzp);
+    if (error) goto out;
+
+    error = zfs_lookup(dzp, name, &zp, 0, NULL, NULL, NULL);
+    if (error) goto out;
+
+    *ino = ZTOI(zp)->i_ino;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    if (dzp)
+        iput(ZTOI(dzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_mkdir(uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
+{
+    int error = 0;
+    znode_t *dzp = NULL;
+    znode_t *zp = NULL;
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, dino, &dzp);
+    if (error) goto out;
+
+    vattr_t vap;
+    uzfs_vap_init(&vap, ZTOI(dzp), S_IFDIR, NULL);
+
+    error = zfs_mkdir(dzp, name, &vap, &zp, NULL, 0, NULL);
+    if (error) goto out;
+
+    *ino = ZTOI(zp)->i_ino;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    if (dzp)
+        iput(ZTOI(dzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_rmdir(uint64_t dino, const char* name)
+{
+    return 0;
+}
+
+//int uzfs_readdir(uint64_t dino, struct linux_dirent *dirp, uint64_t count)
+//{
+//    return 0;
+//}
+
+int uzfs_create(uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
+{
+    return 0;
+}
+
+int uzfs_remove(uint64_t dino, const char* name)
+{
+    return 0;
+}
+
+int uzfs_rename(uint64_t sdino, const char* sname, uint64_t tdino, const char* tname)
+{
+    return 0;
+}
+
+int uzfs_read(uint64_t ino, zfs_uio_t *uio, int ioflag)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zfs_read(zp, uio, ioflag, NULL);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_write(uint64_t ino, zfs_uio_t *uio, int ioflag)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zfs_write(zp, uio, ioflag, NULL);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_fsync(uint64_t ino, int syncflag)
+{
+    int error = 0;
+
+    return error;
+}
+
