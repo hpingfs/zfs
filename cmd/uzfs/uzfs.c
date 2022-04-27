@@ -40,10 +40,26 @@ libzfs_handle_t *g_zfs;
 
 static int uzfs_do_stat(int argc, char **argv);
 static int uzfs_do_read(int argc, char **argv);
+static int uzfs_do_write(int argc, char **argv);
+static int uzfs_do_fsync(int argc, char **argv);
+static int uzfs_do_setxattr(int argc, char **argv);
+static int uzfs_do_getxattr(int argc, char **argv);
+static int uzfs_do_mkdir(int argc, char **argv);
+static int uzfs_do_create(int argc, char **argv);
+static int uzfs_do_rm(int argc, char **argv);
+static int uzfs_do_ls(int argc, char **argv);
 
 typedef enum {
 	HELP_STAT,
 	HELP_READ,
+	HELP_WRITE,
+	HELP_FSYNC,
+	HELP_SETXATTR,
+	HELP_GETXATTR,
+	HELP_MKDIR,
+	HELP_CREATE,
+	HELP_RM,
+	HELP_LS,
 } uzfs_help_t;
 
 typedef struct uzfs_command {
@@ -64,6 +80,14 @@ typedef struct uzfs_command {
 static uzfs_command_t command_table[] = {
 	{ "stat",	uzfs_do_stat, 	HELP_STAT		},
 	{ "read",	uzfs_do_read, 	HELP_READ		},
+	{ "write",	uzfs_do_write, 	HELP_WRITE		},
+	{ "fsync",	uzfs_do_fsync, 	HELP_FSYNC		},
+	{ "setxattr",	uzfs_do_setxattr, 	HELP_SETXATTR		},
+	{ "getxattr",	uzfs_do_getxattr, 	HELP_GETXATTR		},
+	{ "mkdir",	uzfs_do_mkdir, 	HELP_MKDIR		},
+	{ "create",	uzfs_do_create, 	HELP_CREATE		},
+	{ "rm",	uzfs_do_rm, 	HELP_RM		},
+	{ "ls",	uzfs_do_ls, 	HELP_LS		},
 };
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
@@ -75,9 +99,25 @@ get_usage(uzfs_help_t idx)
 {
 	switch (idx) {
 	case HELP_STAT:
-		return (gettext("\tstat <path>\n"));
+		return (gettext("\tstat ...\n"));
 	case HELP_READ:
 		return (gettext("\tread ...\n"));
+	case HELP_WRITE:
+		return (gettext("\twrite ...\n"));
+	case HELP_FSYNC:
+		return (gettext("\tfsync ...\n"));
+	case HELP_SETXATTR:
+		return (gettext("\tsetxattr ...\n"));
+	case HELP_GETXATTR:
+		return (gettext("\tgetxattr ...\n"));
+	case HELP_MKDIR:
+		return (gettext("\tmkdir ...\n"));
+	case HELP_CREATE:
+		return (gettext("\tcreate ...\n"));
+	case HELP_RM:
+		return (gettext("\trm ...\n"));
+	case HELP_LS:
+		return (gettext("\tls ...\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -219,13 +259,108 @@ main(int argc, char **argv)
 	return (error);
 }
 
+static void print_stat(const char* name, struct stat* stat)
+{
+    const char* format =
+        "  File: %s(%s)\n"
+        "  Inode: %lld\n"
+        "  MODE: %x\n"
+        "  Links: %lld\n"
+        "  UID/GID: %d/%d\n"
+        "  SIZE: %d\n"
+        "  BLOCKSIZE: %d\n"
+        "  BLOCKS: %d\n";
+
+    const char* type = S_ISDIR(stat->st_mode) ? "DIR" : "REG FILE";
+
+    printf(format, name, type, stat->st_ino, stat->st_mode, stat->st_nlink, stat->st_uid, stat->st_gid,
+           stat->st_size, stat->st_blksize, stat->st_blocks);
+}
 
 static int
 uzfs_do_stat(int argc, char **argv)
 {
-    struct stat statbuf;
-    memset(&statbuf, 0, sizeof(struct stat));
-	return libuzfs_stat(argv[1], &statbuf);
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("stat %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    struct stat buf;
+    memset(&buf, 0, sizeof(struct stat));
+
+    error = uzfs_getattr(fsid, ino, &buf);
+    if (error) {
+        printf("Failed to stat %s\n", path);
+        goto out;
+    }
+
+    print_stat(s, &buf);
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
 }
 
 static int
@@ -250,16 +385,26 @@ uzfs_do_read(int argc, char **argv)
 	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
 		return (1);
 
-    error = uzfs_init(fsname);
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
     if (error) goto out;
 
     uint64_t root_ino = 0;
 
-    error = uzfs_getroot(fsname, &root_ino);
+    error = uzfs_getroot(fsid, &root_ino);
     if (error) goto out;
 
     char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
     char *e = strchr(s, '/');
+
     uint64_t dino = root_ino;
     uint64_t ino = 0;
     boolean_t out_flag = B_FALSE;
@@ -270,7 +415,7 @@ uzfs_do_read(int argc, char **argv)
         else
             out_flag = B_TRUE;
 
-        error = uzfs_lookup(dino, s, &ino);
+        error = uzfs_lookup(fsid, dino, s, &ino);
         if (error) goto out;
 
         if (out_flag)
@@ -294,18 +439,705 @@ uzfs_do_read(int argc, char **argv)
     zfs_uio_t uio;
     zfs_uio_iovec_init(&uio, &iov, 1, 0, UIO_USERSPACE, iov.iov_len, 0);
 
-    error = uzfs_read(ino, &uio, 0);
+    error = uzfs_read(fsid, ino, &uio, 0);
     if (error) {
-        printf("Failed to read %s\n", target_path);
+        printf("Failed to read %s\n", path);
         goto out;
     }
 
     printf("%s\n", buf);
 
-    uzfs_fini(fsname);
+    uzfs_fini(fsid);
 
 out:
 
+	libzfs_close(zhp);
+
+    return error;
+}
+
+static int
+uzfs_do_write(int argc, char **argv)
+{
+    int error = 0;
+    int size = 4096;
+    char buf[4096] = "";
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+    memcpy(buf, argv[2], strlen(argv[2]));
+
+    printf("write %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    struct iovec iov;
+    iov.iov_base = buf;
+    iov.iov_len = size;
+
+    zfs_uio_t uio;
+    zfs_uio_iovec_init(&uio, &iov, 1, 0, UIO_USERSPACE, iov.iov_len, 0);
+
+    error = uzfs_write(fsid, ino, &uio, 0);
+    if (error) {
+        printf("Failed to write %s\n", path);
+        goto out;
+    }
+
+    uzfs_fini(fsid);
+
+out:
+
+	libzfs_close(zhp);
+
+    return error;
+}
+
+static int
+uzfs_do_fsync(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("write %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    error = uzfs_fsync(fsid, ino, 0);
+    if (error) {
+        printf("Failed to sync %s\n", path);
+        goto out;
+    }
+
+    uzfs_fini(fsid);
+
+out:
+
+	libzfs_close(zhp);
+
+    return error;
+}
+
+
+static int
+uzfs_do_setxattr(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    char *name = argv[2];
+    char *value = argv[3];
+
+    printf("setxattr %s: %s, name: %s, value: %s\n", fsname, target_path, name, value);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    error = uzfs_setxattr(fsid, ino, name, value, sizeof(value), 0);
+    if (error) {
+        printf("Failed to setxattr %s\n", path);
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+}
+
+
+static int
+uzfs_do_getxattr(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    char *name = argv[2];
+
+    printf("getxattr %s: %s, name: %s\n", fsname, target_path, name);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    char value[256] = "";
+    int size = -1;
+
+    size = uzfs_getxattr(fsid, ino, name, &value, sizeof(value));
+    if (size <= 0) {
+        printf("Failed to getxattr %s\n", path);
+        goto out;
+    }
+
+    printf("%s xattr:\n\t%s:%s\n", path, name, value);
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+}
+
+static int
+uzfs_do_mkdir(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("mkdir %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+
+    while (e) {
+        *e = '\0';
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    error = uzfs_mkdir(fsid, dino, s, 0, &ino);
+    if (error) {
+        printf("Failed to mkdir %s\n", path);
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+
+}
+
+static int
+uzfs_do_create(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("mkdir %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+
+    while (e) {
+        *e = '\0';
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    error = uzfs_create(fsid, dino, s, 0, &ino);
+    if (error) {
+        printf("Failed to create file %s\n", path);
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+}
+
+
+static int
+uzfs_do_rm(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("rm %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    struct stat buf;
+    memset(&buf, 0, sizeof(struct stat));
+
+    error = uzfs_getattr(fsid, ino, &buf);
+    if (error) {
+        printf("Failed to stat %s\n", path);
+        goto out;
+    }
+
+    if (S_ISDIR(buf.st_mode)) {
+        error = uzfs_rmdir(fsid, dino, s);
+        if (error) {
+            printf("Failed to rm dir %s\n", path);
+            goto out;
+        }
+    } else if (S_ISREG(buf.st_mode)) {
+        error = uzfs_remove(fsid, dino, s);
+        if (error) {
+            printf("Failed to rm file %s\n", path);
+            goto out;
+        }
+    } else {
+        printf("Invalid file type\n");
+        error = 1;
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+}
+
+static int
+uzfs_do_ls(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    printf("ls %s: %s\n", fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+    boolean_t out_flag = B_FALSE;
+
+    while (s) {
+        if (e)
+            *e = '\0';
+        else
+            out_flag = B_TRUE;
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        if (out_flag)
+            break;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    if (ino == 0) {
+        printf("Empty path\n");
+        error = 1;
+        goto out;
+    }
+
+    struct stat buf;
+    memset(&buf, 0, sizeof(struct stat));
+
+    error = uzfs_getattr(fsid, ino, &buf);
+    if (error) {
+        printf("Failed to stat %s\n", path);
+        goto out;
+    }
+
+    if (S_ISDIR(buf.st_mode)) {
+        error = uzfs_readdir(fsid, ino, NULL, 0);
+        if (error) {
+            printf("Failed to readdir %s\n", path);
+            goto out;
+        }
+    } else if (S_ISREG(buf.st_mode)) {
+        printf("%s\t%ld\n", s, buf.st_ino);
+    } else {
+        printf("Invalid file type\n");
+        error = 1;
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
 	libzfs_close(zhp);
 
     return error;

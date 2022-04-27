@@ -423,7 +423,7 @@ __zpl_xattr_where(struct inode *ip, const char *name, int *where, cred_t *cr)
 	return (error);
 }
 
-static int
+int
 zpl_xattr_get(struct inode *ip, const char *name, void *value, size_t size)
 {
 	znode_t *zp = ITOZ(ip);
@@ -590,7 +590,7 @@ zpl_xattr_set_sa(struct inode *ip, const char *name, const void *value,
 	return (error);
 }
 
-static int
+int
 zpl_xattr_set(struct inode *ip, const char *name, const void *value,
     size_t size, int flags)
 {

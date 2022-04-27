@@ -1754,7 +1754,7 @@ void shrink_dcache_sb(struct super_block *sb)
 
 int uzfs_dir_emit(void *ctx, const char *name, int namelen, loff_t off, uint64_t ino, unsigned type)
 {
-    fprintf(stderr, "\t%s\tobjnum: %ld\n", name, ino);
+    printf("\t%s\tobjnum: %ld\n", name, ino);
     return 0;
 }
 //

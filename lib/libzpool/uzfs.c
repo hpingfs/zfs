@@ -255,15 +255,18 @@ out:
     return error;
 }
 
-zfsvfs_t *zfsvfs = NULL;
+// FIXME(hping)
+#define MAX_NUM_FS (100)
+static zfsvfs_t *zfsvfs_array[MAX_NUM_FS];
+static int zfsvfs_idx = 0;
 
-int uzfs_init(const char* fsname)
+int uzfs_init(const char* fsname, uint64_t *fsid)
 {
     int error = 0;
     vfs_t *vfs = NULL;
     objset_t *os = NULL;
     struct super_block *sb = NULL;
-
+    zfsvfs_t *zfsvfs = NULL;
 
 	vfs = kmem_zalloc(sizeof (vfs_t), KM_SLEEP);
 
@@ -281,6 +284,10 @@ int uzfs_init(const char* fsname)
     error = zfsvfs_setup(zfsvfs, B_TRUE);
     if (error) goto out;
 
+    *fsid = zfsvfs_idx;
+
+    zfsvfs_array[zfsvfs_idx++] = zfsvfs;
+
     return 0;
 
 out:
@@ -293,8 +300,9 @@ out:
     return -1;
 }
 
-int uzfs_fini(const char* fsname)
+int uzfs_fini(uint64_t fsid)
 {
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
     objset_t *os = zfsvfs->z_os;
     vfs_t *vfs = zfsvfs->z_vfs;
     struct super_block *sb = zfsvfs->z_sb;
@@ -329,10 +337,11 @@ int uzfs_fini(const char* fsname)
     return 0;
 }
 
-int uzfs_getroot(const char *fsname, uint64_t* ino)
+int uzfs_getroot(uint64_t fsid, uint64_t* ino)
 {
     int error = 0;
     struct inode* root_inode = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
     error = zfs_root(zfsvfs, &root_inode);
     if (error) goto out;
@@ -345,21 +354,44 @@ out:
     return error;
 }
 
-int uzfs_getattr(uint64_t ino, struct stat* stat)
+int uzfs_getattr(uint64_t fsid, uint64_t ino, struct stat* stat)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    struct linux_kstat kstatbuf;
+    memset(&kstatbuf, 0, sizeof(struct linux_kstat));
+
+    error = zfs_getattr_fast(NULL, ZTOI(zp), &kstatbuf);
+    if (error) goto out;
+
+    cp_new_stat(&kstatbuf, stat);
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_setattr(uint64_t fsid, uint64_t ino, struct iattr* attr)
 {
     return 0;
 }
 
-int uzfs_setattr(uint64_t ino, struct iattr* attr)
-{
-    return 0;
-}
-
-int uzfs_lookup(uint64_t dino, const char* name, uint64_t* ino)
+int uzfs_lookup(uint64_t fsid, uint64_t dino, const char* name, uint64_t* ino)
 {
     int error = 0;
     znode_t *dzp = NULL;
     znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
     ZFS_ENTER(zfsvfs);
 
@@ -382,11 +414,12 @@ out:
     return error;
 }
 
-int uzfs_mkdir(uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
+int uzfs_mkdir(uint64_t fsid, uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
 {
     int error = 0;
     znode_t *dzp = NULL;
     znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
     ZFS_ENTER(zfsvfs);
 
@@ -394,7 +427,7 @@ int uzfs_mkdir(uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
     if (error) goto out;
 
     vattr_t vap;
-    uzfs_vap_init(&vap, ZTOI(dzp), S_IFDIR, NULL);
+    uzfs_vap_init(&vap, ZTOI(dzp), mode | S_IFDIR, NULL);
 
     error = zfs_mkdir(dzp, name, &vap, &zp, NULL, 0, NULL);
     if (error) goto out;
@@ -412,35 +445,117 @@ out:
     return error;
 }
 
-int uzfs_rmdir(uint64_t dino, const char* name)
+int uzfs_rmdir(uint64_t fsid, uint64_t dino, const char* name)
 {
-    return 0;
+    int error = 0;
+    znode_t *dzp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, dino, &dzp);
+    if (error) goto out;
+
+    error = zfs_rmdir(dzp, name, NULL, NULL, 0);
+    if (error) goto out;
+
+out:
+
+    if (dzp)
+        iput(ZTOI(dzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
 }
 
-//int uzfs_readdir(uint64_t dino, struct linux_dirent *dirp, uint64_t count)
-//{
-//    return 0;
-//}
-
-int uzfs_create(uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
-{
-    return 0;
-}
-
-int uzfs_remove(uint64_t dino, const char* name)
-{
-    return 0;
-}
-
-int uzfs_rename(uint64_t sdino, const char* sname, uint64_t tdino, const char* tname)
-{
-    return 0;
-}
-
-int uzfs_read(uint64_t ino, zfs_uio_t *uio, int ioflag)
+int uzfs_readdir(uint64_t fsid, uint64_t ino, struct uzfs_dirent *dirp, uint64_t count)
 {
     int error = 0;
     znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    zpl_dir_context_t ctx= ZPL_DIR_CONTEXT_INIT(NULL, uzfs_dir_emit, 0);
+
+    error = zfs_readdir(ZTOI(zp), &ctx, NULL);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_create(uint64_t fsid, uint64_t dino, const char* name, umode_t mode, uint64_t *ino)
+{
+    int error = 0;
+    znode_t *dzp = NULL;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, dino, &dzp);
+    if (error) goto out;
+
+    vattr_t vap;
+    uzfs_vap_init(&vap, ZTOI(dzp), mode | S_IFREG, NULL);
+
+    error = zfs_create(dzp, name, &vap, 0, mode, &zp, NULL, 0, NULL);
+    if (error) goto out;
+
+    *ino = ZTOI(zp)->i_ino;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    if (dzp)
+        iput(ZTOI(dzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_remove(uint64_t fsid, uint64_t dino, const char* name)
+{
+    int error = 0;
+    znode_t *dzp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, dino, &dzp);
+    if (error) goto out;
+
+    error = zfs_remove(dzp, name, NULL, 0);
+    if (error) goto out;
+
+out:
+
+    if (dzp)
+        iput(ZTOI(dzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_rename(uint64_t fsid, uint64_t sdino, const char* sname, uint64_t tdino, const char* tname)
+{
+    return 0;
+}
+
+int uzfs_read(uint64_t fsid, uint64_t ino, zfs_uio_t *uio, int ioflag)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
     ZFS_ENTER(zfsvfs);
 
@@ -458,10 +573,11 @@ out:
     return error;
 }
 
-int uzfs_write(uint64_t ino, zfs_uio_t *uio, int ioflag)
+int uzfs_write(uint64_t fsid, uint64_t ino, zfs_uio_t *uio, int ioflag)
 {
     int error = 0;
     znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
     ZFS_ENTER(zfsvfs);
 
@@ -479,10 +595,78 @@ out:
     return error;
 }
 
-int uzfs_fsync(uint64_t ino, int syncflag)
+int uzfs_fsync(uint64_t fsid, uint64_t ino, int syncflag)
 {
     int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zfs_fsync(zp, syncflag, NULL);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
     return error;
 }
+
+
+int uzfs_setxattr(uint64_t fsid, uint64_t ino, const char *name, const void *value, size_t size, int flags)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zpl_xattr_set(ZTOI(zp), name, value, size, 0);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+int uzfs_getxattr(uint64_t fsid, uint64_t ino, const char *name, void *value, size_t size)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zpl_xattr_get(ZTOI(zp), name, value, size);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+}
+
+
+int uzfs_listxattr(uint64_t fsid, uint64_t ino, char *list, size_t size)
+{
+    int error = 0;
+    return error;
+}
+
 
