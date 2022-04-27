@@ -743,7 +743,7 @@ zpl_writepage(struct page *pp, struct writeback_control *wbc)
  * by checking if enough space exists and creating a sparse file, as real
  * persistent space reservation is not possible due to COW, snapshots, etc.
  */
-static long
+long
 zpl_fallocate_common(struct inode *ip, int mode, loff_t offset, loff_t len)
 {
 	cred_t *cr = CRED();

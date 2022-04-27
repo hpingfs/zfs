@@ -381,9 +381,44 @@ out:
     return error;
 }
 
-int uzfs_setattr(uint64_t fsid, uint64_t ino, struct iattr* attr)
+int uzfs_setattr(uint64_t fsid, uint64_t ino, struct iattr* ia)
 {
-    return 0;
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    vattr_t vap;
+    memset(&vap, 0, sizeof(vap));
+
+	vap.va_mask = ia->ia_valid & ATTR_IATTR_MASK;
+	vap.va_mode = ia->ia_mode;
+	vap.va_uid = KUID_TO_SUID(ia->ia_uid);
+	vap.va_gid = KGID_TO_SGID(ia->ia_gid);
+	vap.va_size = ia->ia_size;
+	vap.va_atime = ia->ia_atime;
+	vap.va_mtime = ia->ia_mtime;
+	vap.va_ctime = ia->ia_ctime;
+
+	if (vap.va_mask & ATTR_ATIME)
+		ZTOI(zp)->i_atime = zpl_inode_timestamp_truncate(ia->ia_atime, ZTOI(zp));
+
+    error = zfs_setattr(zp, &vap, 0, NULL);
+    if (error) goto out;
+
+	if (ia->ia_valid & ATTR_MODE)
+		error = zpl_chmod_acl(ZTOI(zp));
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
 }
 
 int uzfs_lookup(uint64_t fsid, uint64_t dino, const char* name, uint64_t* ino)
@@ -669,4 +704,25 @@ int uzfs_listxattr(uint64_t fsid, uint64_t ino, char *list, size_t size)
     return error;
 }
 
+int uzfs_fallocate(uint64_t fsid, uint64_t ino, umode_t mode, loff_t offset, loff_t len)
+{
+    int error = 0;
+    znode_t *zp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
 
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, ino, &zp);
+    if (error) goto out;
+
+    error = zpl_fallocate_common(ZTOI(zp), mode, offset, len);
+    if (error) goto out;
+
+out:
+    if (zp)
+        iput(ZTOI(zp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
+
+}

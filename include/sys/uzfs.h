@@ -103,4 +103,6 @@ int uzfs_setxattr(uint64_t fsid, uint64_t ino, const char *name, const void *val
 int uzfs_getxattr(uint64_t fsid, uint64_t ino, const char *name, void *value, size_t size);
 int uzfs_listxattr(uint64_t fsid, uint64_t ino, char *list, size_t size);
 
+int uzfs_fallocate(uint64_t fsid, uint64_t ino, umode_t mode, loff_t offset, loff_t len);
+
 #endif	/* _SYS_UZFS_H */
