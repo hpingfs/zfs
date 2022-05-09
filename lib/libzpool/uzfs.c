@@ -259,6 +259,7 @@ out:
 #define MAX_NUM_FS (100)
 static zfsvfs_t *zfsvfs_array[MAX_NUM_FS];
 static int zfsvfs_idx = 0;
+static znode_t *rootzp = NULL;
 
 int uzfs_init(const char* fsname, uint64_t *fsid)
 {
@@ -307,6 +308,11 @@ int uzfs_fini(uint64_t fsid)
     vfs_t *vfs = zfsvfs->z_vfs;
     struct super_block *sb = zfsvfs->z_sb;
 
+    struct inode* root_inode = NULL;
+    int error = zfs_root(zfsvfs, &root_inode);
+    if (error) return 1;
+    iput(root_inode);
+    iput(root_inode);
 	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
 
 	/*
@@ -346,9 +352,8 @@ int uzfs_getroot(uint64_t fsid, uint64_t* ino)
     error = zfs_root(zfsvfs, &root_inode);
     if (error) goto out;
 
+    rootzp = ITOZ(root_inode);
     *ino = root_inode->i_ino;
-
-    iput(root_inode);
 
 out:
     return error;
@@ -458,8 +463,12 @@ int uzfs_mkdir(uint64_t fsid, uint64_t dino, const char* name, umode_t mode, uin
 
     ZFS_ENTER(zfsvfs);
 
-    error = zfs_zget(zfsvfs, dino, &dzp);
-    if (error) goto out;
+    if (dino == zfsvfs->z_root) {
+        dzp = rootzp;
+    } else {
+        error = zfs_zget(zfsvfs, dino, &dzp);
+        if (error) goto out;
+    }
 
     vattr_t vap;
     uzfs_vap_init(&vap, ZTOI(dzp), mode | S_IFDIR, NULL);
@@ -473,7 +482,7 @@ out:
     if (zp)
         iput(ZTOI(zp));
 
-    if (dzp)
+    if (dzp && dzp != rootzp)
         iput(ZTOI(dzp));
 
     ZFS_EXIT(zfsvfs);
@@ -583,7 +592,32 @@ out:
 
 int uzfs_rename(uint64_t fsid, uint64_t sdino, const char* sname, uint64_t tdino, const char* tname)
 {
-    return 0;
+    int error = 0;
+    znode_t *sdzp = NULL;
+    znode_t *tdzp = NULL;
+    zfsvfs_t *zfsvfs = zfsvfs_array[fsid];
+
+    ZFS_ENTER(zfsvfs);
+
+    error = zfs_zget(zfsvfs, sdino, &sdzp);
+    if (error) goto out;
+
+    error = zfs_zget(zfsvfs, tdino, &tdzp);
+    if (error) goto out;
+
+    error = zfs_rename(sdzp, sname, tdzp, tname, NULL, 0);
+    if (error) goto out;
+
+out:
+
+    if (sdzp)
+        iput(ZTOI(sdzp));
+
+    if (tdzp)
+        iput(ZTOI(tdzp));
+
+    ZFS_EXIT(zfsvfs);
+    return error;
 }
 
 int uzfs_read(uint64_t fsid, uint64_t ino, zfs_uio_t *uio, int ioflag)

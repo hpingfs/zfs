@@ -15,6 +15,6 @@ uzfs_LDADD = \
 	$(abs_top_builddir)/lib/libzpool/libzpool.la \
 	$(abs_top_builddir)/lib/libuzfs/libuzfs.la
 
-uzfs_LDADD += $(LTLIBINTL)
+uzfs_LDADD += $(LTLIBINTL) -lpthread
 
 include $(top_srcdir)/config/CppCheck.am

@@ -26,6 +26,8 @@
 
 #include <libintl.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <libzfs.h>
@@ -35,6 +37,7 @@
 #include <errno.h>
 #include <sys/zfs_context.h>
 #include <libuzfs.h>
+#include <pthread.h>
 
 libzfs_handle_t *g_zfs;
 
@@ -50,6 +53,9 @@ static int uzfs_do_rm(int argc, char **argv);
 static int uzfs_do_ls(int argc, char **argv);
 static int uzfs_do_truncate(int argc, char **argv);
 static int uzfs_do_fallocate(int argc, char **argv);
+static int uzfs_do_mv(int argc, char **argv);
+
+static int uzfs_test(int argc, char **argv);
 
 typedef enum {
 	HELP_STAT,
@@ -64,6 +70,8 @@ typedef enum {
 	HELP_LS,
 	HELP_TRUNCATE,
 	HELP_FALLOCATE,
+	HELP_MV,
+	HELP_TEST,
 } uzfs_help_t;
 
 typedef struct uzfs_command {
@@ -94,6 +102,9 @@ static uzfs_command_t command_table[] = {
 	{ "ls",	uzfs_do_ls, 	HELP_LS		},
 	{ "truncate",	uzfs_do_truncate, 	HELP_TRUNCATE		},
 	{ "fallocate",	uzfs_do_fallocate, 	HELP_FALLOCATE		},
+	{ "mv",	uzfs_do_mv, 	HELP_MV		},
+
+	{ "test",	uzfs_test, 	HELP_TEST		},
 };
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
@@ -126,6 +137,10 @@ get_usage(uzfs_help_t idx)
 		return (gettext("\ttruncate ...\n"));
 	case HELP_FALLOCATE:
 		return (gettext("\tfallocate ...\n"));
+    case HELP_MV:
+		return (gettext("\tmv ...\n"));
+	case HELP_TEST:
+		return (gettext("\ttest ...\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -875,6 +890,8 @@ uzfs_do_mkdir(int argc, char **argv)
         goto out;
     }
 
+    printf("succeeded to mkdir %s\n", path);
+
 out:
 
     uzfs_fini(fsid);
@@ -1329,3 +1346,319 @@ out:
 
     return error;
 }
+
+static int
+uzfs_do_mv(int argc, char **argv)
+{
+    int error = 0;
+    char *spath = argv[1];
+    char *dst_path = argv[2];
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char src_path[256] = "";
+
+    char *fs_end = strstr(spath, "://");
+    memcpy(fsname, spath, fs_end - spath);
+    memcpy(src_path, fs_end + 3, strlen(spath) - strlen(fsname) - 3);
+
+    printf("mv %s: %s %s\n", fsname, src_path, dst_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = src_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", src_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t sdino = root_ino;
+    uint64_t sino = 0;
+
+    while (e) {
+        *e = '\0';
+
+        error = uzfs_lookup(fsid, sdino, s, &sino);
+        if (error) goto out;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        sdino = sino;
+    }
+
+    char *d = dst_path;
+    if (*d != '/') {
+        printf("path %s must be started with /\n", dst_path);
+        error = 1;
+        goto out;
+    }
+
+    d++;
+
+    e = strchr(d, '/');
+
+    uint64_t dst_dino = root_ino;
+    uint64_t dst_ino = 0;
+
+    while (e) {
+        *e = '\0';
+
+        error = uzfs_lookup(fsid, dst_dino, d, &dst_ino);
+        if (error) goto out;
+
+        d = e + 1;
+        e = strchr(d, '/');
+        dst_dino = dst_ino;
+    }
+
+
+    error = uzfs_rename(fsid, sdino, s, dst_dino, d);
+    if (error) {
+        printf("Failed to mv %s %s\n", spath, dst_path);
+        goto out;
+    }
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+
+}
+
+
+struct test_args {
+    uint64_t fsid;
+    uint64_t dino;
+    int op;
+    int num;
+    int tid;
+};
+
+static void* do_test(void* test_args)
+{
+    struct test_args* args = test_args;
+    uint64_t fsid = args->fsid;
+    uint64_t root_ino = args->dino;
+    int op = args->op;
+    int num = args->num;
+    int tid = args->tid;
+    int error = 0;
+    int i = 0;
+    uint64_t ino;
+    uint64_t dino;
+    char name[20] = "";
+
+    printf("tid: %d\n", tid);
+    sprintf(name, "t%d", tid);
+
+    if (op == 1 || op == 3) {
+        error = uzfs_mkdir(fsid, root_ino, name, 0, &ino);
+        if (error) {
+            printf("Failed to mkdir parent %s\n", name);
+            goto out;
+        }
+    } else {
+        error = uzfs_lookup(fsid, root_ino, name, &ino);
+        if (error) {
+            printf("Failed to lookup parent dir %s\n", name);
+            goto out;
+        }
+    }
+
+    dino = ino;
+
+    for (i = 0; i < num; i++) {
+        sprintf(name, "%d", i);
+        if (op == 0) {
+            error = uzfs_rmdir(fsid, dino, name);
+            if (error) {
+                printf("Failed to mkdir %s\n", name);
+                goto out;
+            }
+        } else if (op == 1) {
+            error = uzfs_mkdir(fsid, dino, name, 0, &ino);
+            if (error) {
+                printf("Failed to rmdir %s\n", name);
+                goto out;
+            }
+        } else if (op == 2) {
+            error = uzfs_remove(fsid, dino, name);
+            if (error) {
+                printf("Failed to remove file %s\n", name);
+                goto out;
+            }
+        } else if (op == 3) {
+            error = uzfs_create(fsid, dino, name, 0, &ino);
+            if (error) {
+                printf("Failed to create file %s\n", name);
+                goto out;
+            }
+        } else if (op == 4) {
+            error = uzfs_lookup(fsid, dino, name, &ino);
+            if (error) goto out;
+
+            struct stat buf;
+            memset(&buf, 0, sizeof(struct stat));
+
+            error = uzfs_getattr(fsid, ino, &buf);
+            if (error) {
+                printf("Failed to stat %s\n", name);
+                goto out;
+            }
+            //print_stat(name, &buf);
+        }
+        //printf("succeeded to done %s\n", name);
+    }
+
+    if (op == 0 || op == 2) {
+        sprintf(name, "t%d", tid);
+        error = uzfs_rmdir(fsid, root_ino, name);
+        if (error) {
+            printf("Failed to rm parent dir %s\n", name);
+            goto out;
+        }
+    }
+
+    printf("tid: %d done\n", tid);
+
+
+out:
+    return NULL;
+}
+
+static int
+uzfs_test(int argc, char **argv)
+{
+    int error = 0;
+    char *path = argv[1];
+    int op = atoi(argv[2]); // 0: rmdir, 1: mkdir, 2: remove file, 3: create file, 4: stat
+    int depth = atoi(argv[3]);
+    int branch = atoi(argv[4]);
+    int num = atoi(argv[5]);
+    int n_threads = atoi(argv[6]);
+	zfs_handle_t *zhp;
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char target_path[256] = "";
+    char *opstr = NULL;
+
+    char *fs_end = strstr(path, "://");
+    memcpy(fsname, path, fs_end - path);
+    memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
+
+    switch (op) {
+        case 0:
+            opstr = "rmdir";
+            break;
+        case 1:
+            opstr = "mkdir";
+            break;
+        case 2:
+            opstr = "rm file";
+            break;
+        case 3:
+            opstr = "create file";
+            break;
+        case 4:
+            opstr = "stat";
+            break;
+        default:
+            printf("invalid op: %d\n", op);
+            return -1;
+    }
+
+    printf("%s %s: %s\n", opstr, fsname, target_path);
+
+	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
+		return (1);
+
+    uint64_t fsid = 0;
+    error = uzfs_init(fsname, &fsid);
+    if (error) goto out;
+
+    uint64_t root_ino = 0;
+
+    error = uzfs_getroot(fsid, &root_ino);
+    if (error) goto out;
+
+    char *s = target_path;
+    if (*s != '/') {
+        printf("path %s must be started with /\n", target_path);
+        error = 1;
+        goto out;
+    }
+
+    s++;
+
+    char *e = strchr(s, '/');
+
+    uint64_t dino = root_ino;
+    uint64_t ino = 0;
+
+    while (e) {
+        *e = '\0';
+
+        error = uzfs_lookup(fsid, dino, s, &ino);
+        if (error) goto out;
+
+        s = e + 1;
+        e = strchr(s, '/');
+        dino = ino;
+    }
+
+    int i;
+    clock_t start, end;
+    start = clock();
+    pthread_t ntids[100];
+    struct test_args args[100];
+    for (i = 0; i < n_threads; i++) {
+        args[i].fsid = fsid;
+        args[i].dino = dino;
+        args[i].op = op;
+        args[i].num = num;
+        args[i].tid = i;
+        error = pthread_create(&ntids[i], NULL, do_test, (void*)&args[i]);
+        if  (error != 0) {
+            printf("Failed to create thread: %s\n" ,  strerror (error));
+            goto out;
+        }
+
+    }
+    for (i = 0; i < n_threads; i++) {
+        pthread_join(ntids[i],NULL);
+    }
+
+    end = clock();
+    int dirnum = branch * depth * num * n_threads;
+    double timecost = ((double)(end-start))/CLOCKS_PER_SEC;
+    double rate = dirnum / timecost;
+    printf("dirnum: %d\ntime=%fs\nrate=%f\n", dirnum, timecost, rate);
+
+out:
+
+    uzfs_fini(fsid);
+	libzfs_close(zhp);
+
+    return error;
+
+}
+

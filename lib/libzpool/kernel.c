@@ -83,6 +83,7 @@ struct proc p0;
 kthread_t *
 zk_thread_create(void (*func)(void *), void *arg, size_t stksize, int state)
 {
+//    fprintf(stderr, "%s\n", __func__);
 	pthread_attr_t attr;
 	pthread_t tid;
 	char *stkstr;
@@ -1405,19 +1406,19 @@ const struct inode_operations simple_dir_inode_operations = {};
 
 int zfs_umount(struct super_block *sb)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return 0;
 }
 
 static void __iget(struct inode* inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     atomic_inc_32(&inode->i_count.counter);
 }
 
 struct inode *igrab(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     __iget(inode);
     return inode;
 //    spin_lock(&inode->i_lock);
@@ -1449,7 +1450,7 @@ void iput(struct inode *inode)
 {
     // FIXME(hping)
     if (inode) {
-        fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+        dprintf("%s: %ld\n", __func__, inode->i_ino);
         atomic_dec_32(&inode->i_count.counter);
         if (atomic_read(&inode->i_count) == 0) {
             zfs_inactive(inode);
@@ -1472,7 +1473,7 @@ void iput(struct inode *inode)
  */
 void drop_nlink(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     WARN_ON(inode->i_nlink == 0);
     inode->__i_nlink--;
 //    if (!inode->i_nlink)
@@ -1489,7 +1490,7 @@ void drop_nlink(struct inode *inode)
  */
 void clear_nlink(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     if (inode->i_nlink) {
         inode->__i_nlink = 0;
 //        atomic_long_inc(&inode->i_sb->s_remove_count);
@@ -1506,7 +1507,7 @@ void clear_nlink(struct inode *inode)
  */
 void set_nlink(struct inode *inode, unsigned int nlink)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     if (!nlink) {
         clear_nlink(inode);
     } else {
@@ -1528,7 +1529,7 @@ void set_nlink(struct inode *inode, unsigned int nlink)
  */
 void inc_nlink(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     if (unlikely(inode->i_nlink == 0)) {
 //        WARN_ON(!(inode->i_state & I_LINKABLE));
 //        atomic_long_dec(&inode->i_sb->s_remove_count);
@@ -1548,12 +1549,12 @@ struct inode *new_inode(struct super_block *sb) {
 
     pthread_spin_init(&ip->i_lock, PTHREAD_PROCESS_PRIVATE);
 
-    fprintf(stderr, "%s: %ld\n", __func__, ip->i_ino);
+    dprintf("%s: %ld\n", __func__, ip->i_ino);
     return (ip);
 }
 
 void destroy_inode(struct inode* inode) {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     if (inode) {
         if (inode->i_lock)
             pthread_spin_destroy(&inode->i_lock);
@@ -1568,7 +1569,7 @@ void destroy_inode(struct inode* inode) {
  */
 void inode_init_once(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     memset(inode, 0, sizeof(*inode));
 //    INIT_HLIST_NODE(&inode->i_hash);
 //    INIT_LIST_HEAD(&inode->i_devices);
@@ -1596,7 +1597,7 @@ inode_set_iversion(struct inode *ip, uint64_t val)
  */
 int write_inode_now(struct inode *inode, int sync)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     return 0;
 //    struct bdi_writeback *wb = &inode_to_bdi(inode)->wb;
 //    struct writeback_control wbc = {
@@ -1621,7 +1622,7 @@ int write_inode_now(struct inode *inode, int sync)
  */
 void remove_inode_hash(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 //    spin_lock(&inode_hash_lock);
 //    spin_lock(&inode->i_lock);
 //    hlist_del_init(&inode->i_hash);
@@ -1638,7 +1639,7 @@ void remove_inode_hash(struct inode *inode)
  */
 boolean_t inode_owner_or_capable(const struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 //    struct user_namespace *ns;
 //
 //    if (uid_eq(current_fsuid(), inode->i_uid))
@@ -1659,7 +1660,7 @@ boolean_t inode_owner_or_capable(const struct inode *inode)
  */
 void unlock_new_inode(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 //	lockdep_annotate_inode_mutex_key(inode);
 //	spin_lock(&inode->i_lock);
 //	WARN_ON(!(inode->i_state & I_NEW));
@@ -1671,7 +1672,7 @@ void unlock_new_inode(struct inode *inode)
 
 int insert_inode_locked(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     __iget(inode);
     return 0;
 }
@@ -1683,7 +1684,7 @@ int insert_inode_locked(struct inode *inode)
  */
 void i_size_write(struct inode *inode, loff_t i_size)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 	inode->i_size = i_size;
 }
 
@@ -1705,7 +1706,7 @@ void i_size_write(struct inode *inode, loff_t i_size)
  */
 void inode_set_flags(struct inode *inode, unsigned int flags, unsigned int mask)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 //	unsigned int old_flags, new_flags;
 //
 //	WARN_ON_ONCE(flags & ~mask);
@@ -1718,16 +1719,16 @@ void inode_set_flags(struct inode *inode, unsigned int flags, unsigned int mask)
 
 void mark_inode_dirty(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 }
 
 struct dentry *d_make_root(struct inode *root_inode) {
-    fprintf(stderr, "%s: %ld\n", __func__, root_inode->i_ino);
+    dprintf("%s: %ld\n", __func__, root_inode->i_ino);
     return NULL;
 }
 
 void d_prune_aliases(struct inode *inode) {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 }
 
 /**
@@ -1739,7 +1740,7 @@ void d_prune_aliases(struct inode *inode) {
  */
 void shrink_dcache_sb(struct super_block *sb)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 //    LIST_HEAD(tmp);
 //
 //    spin_lock(&dcache_lru_lock);
@@ -1760,19 +1761,19 @@ int uzfs_dir_emit(void *ctx, const char *name, int namelen, loff_t off, uint64_t
 //
 //boolean_t zpl_dir_emit(zpl_dir_context_t *ctx, const char *name, int namelen, uint64_t ino, unsigned type)
 //{
-//    fprintf(stderr, "\t%s\tobjnum: %ld\n", name, ino);
+//    dprintf("\t%s\tobjnum: %ld\n", name, ino);
 //    return 1;
 //}
 //
 //boolean_t zpl_dir_emit_dot(struct file *file, zpl_dir_context_t *ctx)
 //{
-//    fprintf(stderr, "\t.\tobjnum: %ld\n", file->f_inode->i_ino);
+//    dprintf("\t.\tobjnum: %ld\n", file->f_inode->i_ino);
 //    return 1;
 //}
 //
 //boolean_t zpl_dir_emit_dotdot(struct file *file, zpl_dir_context_t *ctx)
 //{
-//    fprintf(stderr, "\t..\tobjnum: %ld\n", file->f_inode->i_ino);
+//    dprintf("\t..\tobjnum: %ld\n", file->f_inode->i_ino);
 //    return 1;
 //}
 //
@@ -1794,37 +1795,37 @@ int uzfs_dir_emit(void *ctx, const char *name, int namelen, loff_t off, uint64_t
 
 void update_pages(znode_t *zp, int64_t start, int len, objset_t *os)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, ZTOI(zp)->i_ino);
+    dprintf("%s: %ld\n", __func__, ZTOI(zp)->i_ino);
 }
 
 int mappedread(znode_t *zp, int nbytes, zfs_uio_t *uio) {
-    fprintf(stderr, "%s: %ld\n", __func__, ZTOI(zp)->i_ino);
+    dprintf("%s: %ld\n", __func__, ZTOI(zp)->i_ino);
     return 0;
 }
 
 uid_t zfs_uid_read(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     return 0;
 //	return (zfs_uid_read_impl(ip));
 }
 
 gid_t zfs_gid_read(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     return 0;
 //	return (zfs_gid_read_impl(ip));
 }
 
 void zfs_uid_write(struct inode *inode, uid_t uid)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 	inode->i_uid = make_kuid(kcred->user_ns, uid);
 }
 
 void zfs_gid_write(struct inode *inode, gid_t gid)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 	inode->i_gid = make_kgid(kcred->user_ns, gid);
 }
 
@@ -1842,7 +1843,7 @@ void zfs_gid_write(struct inode *inode, gid_t gid)
  */
 void truncate_setsize(struct inode *inode, loff_t newsize)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
 //	loff_t oldsize = inode->i_size;
 //
 //	i_size_write(inode, newsize);
@@ -1853,18 +1854,18 @@ void truncate_setsize(struct inode *inode, loff_t newsize)
 
 int register_filesystem(struct file_system_type * fs)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 	return 0;
 }
 
 int unregister_filesystem(struct file_system_type * fs)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 	return 0;
 }
 
 void deactivate_super(struct super_block *s) {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 }
 
 // huangping: common utility
@@ -1926,7 +1927,7 @@ int atomic_add_unless(atomic_t *v, int a, int u)
  */
 struct timespec timespec_trunc(struct timespec t, unsigned gran)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 //    /*
 //     * Division is pretty slow so avoid it for common cases.
 //     * Currently current_kernel_time() never returns better than
@@ -1944,7 +1945,7 @@ struct timespec timespec_trunc(struct timespec t, unsigned gran)
 
 struct timespec current_kernel_time(void)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     struct timespec now = {0};
     return now;
 //    struct timekeeper *tk = &timekeeper;
@@ -1963,7 +1964,7 @@ struct timespec current_kernel_time(void)
 #if !defined(HAVE_CURRENT_TIME)
 struct timespec current_time(struct inode *inode)
 {
-    fprintf(stderr, "%s: %ld\n", __func__, inode->i_ino);
+    dprintf("%s: %ld\n", __func__, inode->i_ino);
     return (timespec_trunc(current_kernel_time(), inode->i_sb->s_time_gran));
 }
 #endif
@@ -1976,7 +1977,7 @@ struct timespec current_time(struct inode *inode)
  */
 int timespec_compare(const struct timespec *lhs, const struct timespec *rhs)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 	if (lhs->tv_sec < rhs->tv_sec)
 		return -1;
 	if (lhs->tv_sec > rhs->tv_sec)
@@ -1985,14 +1986,14 @@ int timespec_compare(const struct timespec *lhs, const struct timespec *rhs)
 }
 
 int groupmember(gid_t gid, const cred_t *cr) {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return 0;
 }
 
 /* Return the filesystem user id */
 uid_t crgetfsuid(const cred_t *cr)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return 0;
 //	return (KUID_TO_SUID(cr->fsuid));
 }
@@ -2000,7 +2001,7 @@ uid_t crgetfsuid(const cred_t *cr)
 /* Return the filesystem group id */
 gid_t crgetfsgid(const cred_t *cr)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return 0;
 //	return (KGID_TO_SGID(cr->fsgid));
 }
@@ -2106,51 +2107,51 @@ out:
 }
 
 void schedule() {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 }
 
 void init_special_inode(struct inode *inode, umode_t mode, dev_t dev)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 }
 
 void truncate_inode_pages_range(struct address_space *space, loff_t lstart, loff_t lend)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 }
 
 struct inode *ilookup(struct super_block *sb, unsigned long ino)
 {
-    fprintf(stderr, "%s, ino: %ld\n", __func__, ino);
+    dprintf("%s, ino: %ld\n", __func__, ino);
     return NULL;
 }
 
 struct dentry * d_obtain_alias(struct inode *inode)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return NULL;
 }
 
 boolean_t d_mountpoint(struct dentry *dentry)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     return B_TRUE;
 }
 
 void dput(struct dentry *dentry)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
 }
 
 int zfsctl_snapshot_unmount(const char *snapname, int flags)
 {
-    fprintf(stderr, "%s, snapname: %s\n", __func__, snapname);
+    dprintf("%s, snapname: %s\n", __func__, snapname);
     return 0;
 }
 
 int kern_path(const char *name, unsigned int flags, struct path *path)
 {
-    fprintf(stderr, "%s, name: %s\n", __func__, name);
+    dprintf("%s, name: %s\n", __func__, name);
     return 0;
 //    struct nameidata nd;
 //    int res = do_path_lookup(AT_FDCWD, name, flags, &nd);
@@ -2162,65 +2163,65 @@ int kern_path(const char *name, unsigned int flags, struct path *path)
 void zfs_zero_partial_page(znode_t *zp, uint64_t start, uint64_t len)
 {
     // never be called
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
 }
 
 void path_put(const struct path *path)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
 }
 
 int generic_file_open(struct inode * inode, struct file * filp)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 struct dentry * d_splice_alias(struct inode *inode, struct dentry *dentry)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     d_instantiate(dentry, inode);
     return dentry;
 }
 
 void d_set_d_op(struct dentry *dentry, const struct dentry_operations *op)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
 }
 
 void d_instantiate(struct dentry *dentry, struct inode *inode)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     dentry->d_inode = inode;
 }
 
 void generic_fillattr(struct inode *inode, struct linux_kstat *stat)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
 }
 
 loff_t generic_file_llseek(struct file *file, loff_t offset, int whence)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 ssize_t generic_read_dir(struct file * file, char *buf, size_t size, loff_t *off)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int zfsctl_snapshot_mount(struct path *path, int flags)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
@@ -2243,97 +2244,97 @@ int zfsctl_snapshot_mount(struct path *path, int flags)
 
 ssize_t generic_getxattr(struct dentry *dentry, const char *name, void *buffer, size_t size)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int generic_removexattr(struct dentry *dentry, const char *name)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int generic_readlink(struct dentry *dentry, char *buffer, int buflen)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 struct dentry *d_add_ci(struct dentry *dentry, struct inode *inode, struct qstr *name)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return NULL;
 }
 
 int d_invalidate(struct dentry *dentry)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int inode_change_ok(const struct inode *inode, struct iattr *attr)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 ssize_t do_sync_read(struct file *filp, char *buf, size_t len, loff_t *ppos)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 ssize_t do_sync_write(struct file *filp, const char *buf, size_t len, loff_t *ppos)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int __set_page_dirty_nobuffers(struct page *page)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 int filemap_write_and_wait_range(struct address_space *mapping, loff_t lstart, loff_t lend)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
 
 void touch_atime(struct path *path)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
 }
 
 int generic_segment_checks(const struct iovec *iov, unsigned long *nr_segs, size_t *count, int access_flags)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
@@ -2341,9 +2342,10 @@ int generic_segment_checks(const struct iovec *iov, unsigned long *nr_segs, size
 
 int generic_write_checks(struct file *file, loff_t *pos, size_t *count, int isblk)
 {
-    fprintf(stderr, "%s\n", __func__);
+    dprintf("%s\n", __func__);
     ASSERT(0);
     return 0;
 }
+
 
 
