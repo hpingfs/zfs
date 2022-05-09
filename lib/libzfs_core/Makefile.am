@@ -7,6 +7,7 @@ AM_CFLAGS += -fvisibility=hidden
 lib_LTLIBRARIES = libzfs_core.la
 
 include $(top_srcdir)/config/Abigail.am
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/spl
 
 USER_C = \
 	libzfs_core.c
