@@ -470,7 +470,8 @@ arc_memory_throttle(spa_t *spa, uint64_t reserve, uint64_t txg)
 uint64_t
 arc_all_memory(void)
 {
-	return (ptob(physmem) / 2);
+//	return (ptob(physmem) / 2);
+	return (ptob(physmem));
 }
 
 uint64_t
