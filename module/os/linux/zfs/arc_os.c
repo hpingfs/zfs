@@ -443,14 +443,19 @@ arc_unregister_hotplug(void)
 #endif
 }
 #else /* _KERNEL */
+static int count = 0;
 int64_t
 arc_available_memory(void)
 {
 	int64_t lowest = INT64_MAX;
 
 	/* Every 100 calls, free a small amount */
-	if (random_in_range(100) == 0)
-		lowest = -1024;
+//	if (random_in_range(100) == 0)
+//		lowest = -1024;
+
+    if (count++ % 100 == 0) {
+        lowest = -1024;
+    }
 
 	return (lowest);
 }
