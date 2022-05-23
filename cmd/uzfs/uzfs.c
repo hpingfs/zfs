@@ -1625,6 +1625,10 @@ uzfs_test(int argc, char **argv)
         dino = ino;
     }
 
+    struct timeval t1,t2;
+    double timeuse;
+    gettimeofday(&t1,NULL);
+
     int i;
     clock_t start, end;
     start = clock();
@@ -1648,10 +1652,13 @@ uzfs_test(int argc, char **argv)
     }
 
     end = clock();
-    int dirnum = branch * depth * num * n_threads;
-    double timecost = ((double)(end-start))/CLOCKS_PER_SEC;
-    double rate = dirnum / timecost;
-    printf("dirnum: %d\ntime=%fs\nrate=%f\n", dirnum, timecost, rate);
+    gettimeofday(&t2,NULL);
+    timeuse = (t2.tv_sec - t1.tv_sec) + (double)(t2.tv_usec - t1.tv_usec)/1000000.0;
+
+    int totalnum = branch * depth * num * n_threads;
+    double clockuse = ((double)(end - start))/CLOCKS_PER_SEC;
+    double rate = totalnum / timeuse;
+    printf("num: %d\ntime=%fs\nclock=%fs\nrate=%f\n", totalnum, timeuse, clockuse, rate);
 
 out:
 
