@@ -850,6 +850,8 @@ dmu_free_long_range_impl(objset_t *os, dnode_t *dn, uint64_t offset,
 	else
 		dirty_frees_threshold = zfs_dirty_data_max / 20;
 
+    dirty_frees_threshold = 0;
+
 	if (length == DMU_OBJECT_END || offset + length > object_size)
 		length = object_size - offset;
 
