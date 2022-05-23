@@ -113,6 +113,8 @@ static void txg_quiesce_thread(void *arg);
 
 int zfs_txg_timeout = 5;	/* max seconds worth of delta per txg */
 
+//#define dprintf printf
+
 /*
  * Prepare the txg subsystem.
  */
@@ -581,14 +583,16 @@ txg_sync_thread(void *arg)
 		DTRACE_PROBE2(txg__syncing, dsl_pool_t *, dp, uint64_t, txg);
 		cv_broadcast(&tx->tx_quiesce_more_cv);
 
-		dprintf("txg=%llu quiesce_txg=%llu sync_txg=%llu\n",
+	    dprintf("%s: txg=%llu quiesce_txg=%llu sync_txg=%llu\n", __func__,
 		    (u_longlong_t)txg, (u_longlong_t)tx->tx_quiesce_txg_waiting,
 		    (u_longlong_t)tx->tx_sync_txg_waiting);
 		mutex_exit(&tx->tx_sync_lock);
 
 		txg_stat_t *ts = spa_txg_history_init_io(spa, txg, dp);
 		start = ddi_get_lbolt();
+        dprintf("sync start: %lld\n", txg);
 		spa_sync(spa, txg);
+        dprintf("sync done: %lld\n", txg);
 		delta = ddi_get_lbolt() - start;
 		spa_txg_history_fini_io(spa, ts);
 
@@ -702,7 +706,7 @@ txg_wait_synced_impl(dsl_pool_t *dp, uint64_t txg, boolean_t wait_sig)
 		txg = tx->tx_open_txg + TXG_DEFER_SIZE;
 	if (tx->tx_sync_txg_waiting < txg)
 		tx->tx_sync_txg_waiting = txg;
-	dprintf("txg=%llu quiesce_txg=%llu sync_txg=%llu\n",
+	dprintf("%s: txg=%llu quiesce_txg=%llu sync_txg=%llu\n", __func__,
 	    (u_longlong_t)txg, (u_longlong_t)tx->tx_quiesce_txg_waiting,
 	    (u_longlong_t)tx->tx_sync_txg_waiting);
 	while (tx->tx_synced_txg < txg) {
@@ -763,7 +767,7 @@ txg_wait_open(dsl_pool_t *dp, uint64_t txg, boolean_t should_quiesce)
 		txg = tx->tx_open_txg + 1;
 	if (tx->tx_quiesce_txg_waiting < txg && should_quiesce)
 		tx->tx_quiesce_txg_waiting = txg;
-	dprintf("txg=%llu quiesce_txg=%llu sync_txg=%llu\n",
+	dprintf("%s: txg=%llu quiesce_txg=%llu sync_txg=%llu\n", __func__,
 	    (u_longlong_t)txg, (u_longlong_t)tx->tx_quiesce_txg_waiting,
 	    (u_longlong_t)tx->tx_sync_txg_waiting);
 	while (tx->tx_open_txg < txg) {

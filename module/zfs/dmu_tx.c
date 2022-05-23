@@ -1057,6 +1057,7 @@ dmu_tx_assign(dmu_tx_t *tx, uint64_t txg_how)
 		if (err != ERESTART || !(txg_how & TXG_WAIT))
 			return (err);
 
+//        printf("wait dmu tx\n");
 		dmu_tx_wait(tx);
 	}
 
