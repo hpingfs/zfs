@@ -5,6 +5,9 @@ AM_CPPFLAGS += -DDEBUG -UNDEBUG -DZFS_DEBUG
 
 sbin_PROGRAMS = zdb
 
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/spl
+DEFAULT_INCLUDES += -I$(top_srcdir)/include/os/linux/zfs
+
 zdb_SOURCES = \
 	zdb.c \
 	zdb_il.c \

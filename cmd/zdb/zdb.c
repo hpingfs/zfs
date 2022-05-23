@@ -8588,7 +8588,7 @@ main(int argc, char **argv)
 			flags = ZFS_IMPORT_VERBATIM;
 			break;
 		case 'x':
-			vn_dumpdir = optarg;
+			//vn_dumpdir = optarg;
 			break;
 		default:
 			usage();
