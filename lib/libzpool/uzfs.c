@@ -313,6 +313,8 @@ int uzfs_fini(uint64_t fsid)
     if (error) return 1;
     iput(root_inode);
     iput(root_inode);
+    // sleep 1 second for zfsvfs draining, otherwise may hit first assert in zfs_unlinked_drain_task
+    sleep(1);
 	VERIFY(zfsvfs_teardown(zfsvfs, B_TRUE) == 0);
 
 	/*
