@@ -249,9 +249,9 @@ spa_mode_t spa_mode_global = SPA_MODE_UNINIT;
  * Everything except dprintf, set_error, spa, and indirect_remap is on
  * by default in debug builds.
  */
-//int zfs_flags = ~(ZFS_DEBUG_DPRINTF | ZFS_DEBUG_SET_ERROR |
-//    ZFS_DEBUG_INDIRECT_REMAP);
-int zfs_flags = -1;
+int zfs_flags = ~(ZFS_DEBUG_DPRINTF | ZFS_DEBUG_SET_ERROR |
+    ZFS_DEBUG_INDIRECT_REMAP);
+//int zfs_flags = -1;
 #else
 int zfs_flags = 0;
 #endif
