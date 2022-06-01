@@ -386,6 +386,7 @@ static ztest_shared_callstate_t *ztest_shared_callstate;
 ztest_func_t ztest_dmu_read_write;
 ztest_func_t ztest_dmu_write_parallel;
 ztest_func_t ztest_dmu_object_alloc_free;
+ztest_func_t ztest_dmu_object_claim_free;
 ztest_func_t ztest_dmu_object_next_chunk;
 ztest_func_t ztest_dmu_commit_callbacks;
 ztest_func_t ztest_zap;
@@ -394,6 +395,7 @@ ztest_func_t ztest_zil_commit;
 ztest_func_t ztest_zil_remount;
 ztest_func_t ztest_dmu_read_write_zcopy;
 ztest_func_t ztest_dmu_objset_create_destroy;
+ztest_func_t ztest_dmu_object_alloc_claim;
 ztest_func_t ztest_dmu_prealloc;
 ztest_func_t ztest_fzap;
 ztest_func_t ztest_dmu_snapshot_create_destroy;
@@ -434,45 +436,45 @@ uint64_t zopt_rarely = 60ULL * NANOSEC;		/* every 60 seconds */
 	    .zi_funcname = # func }
 
 ztest_info_t ztest_info[] = {
-	ZTI_INIT(ztest_dmu_read_write, 1, &zopt_always),
-	ZTI_INIT(ztest_dmu_write_parallel, 10, &zopt_always),
-	ZTI_INIT(ztest_dmu_object_alloc_free, 1, &zopt_always),
-	ZTI_INIT(ztest_dmu_object_next_chunk, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_dmu_commit_callbacks, 1, &zopt_always),
-	ZTI_INIT(ztest_zap, 30, &zopt_always),
-	ZTI_INIT(ztest_zap_parallel, 100, &zopt_always),
-	ZTI_INIT(ztest_split_pool, 1, &zopt_always),
-	ZTI_INIT(ztest_zil_commit, 1, &zopt_incessant),
-	ZTI_INIT(ztest_zil_remount, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_dmu_read_write_zcopy, 1, &zopt_often),
-	ZTI_INIT(ztest_dmu_objset_create_destroy, 1, &zopt_often),
-	ZTI_INIT(ztest_dsl_prop_get_set, 1, &zopt_often),
-	ZTI_INIT(ztest_spa_prop_get_set, 1, &zopt_sometimes),
-#if 0
-	ZTI_INIT(ztest_dmu_prealloc, 1, &zopt_sometimes),
-#endif
-	ZTI_INIT(ztest_fzap, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_dmu_snapshot_create_destroy, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_spa_create_destroy, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_fault_inject, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_dmu_snapshot_hold, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_mmp_enable_disable, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_reguid, 1, &zopt_rarely),
-	ZTI_INIT(ztest_scrub, 1, &zopt_rarely),
-	ZTI_INIT(ztest_spa_upgrade, 1, &zopt_rarely),
-	ZTI_INIT(ztest_dsl_dataset_promote_busy, 1, &zopt_rarely),
-	ZTI_INIT(ztest_vdev_attach_detach, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_vdev_LUN_growth, 1, &zopt_rarely),
-	ZTI_INIT(ztest_vdev_add_remove, 1, &ztest_opts.zo_vdevtime),
-	ZTI_INIT(ztest_vdev_class_add, 1, &ztest_opts.zo_vdevtime),
-	ZTI_INIT(ztest_vdev_aux_add_remove, 1, &ztest_opts.zo_vdevtime),
-	ZTI_INIT(ztest_device_removal, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_spa_checkpoint_create_discard, 1, &zopt_rarely),
-	ZTI_INIT(ztest_initialize, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_trim, 1, &zopt_sometimes),
-	ZTI_INIT(ztest_fletcher, 1, &zopt_rarely),
-	ZTI_INIT(ztest_fletcher_incr, 1, &zopt_rarely),
-	ZTI_INIT(ztest_verify_dnode_bt, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_read_write, 1, &zopt_always),
+//	ZTI_INIT(ztest_dmu_write_parallel, 10, &zopt_always),
+//	ZTI_INIT(ztest_dmu_object_alloc_free, 1, &zopt_always),
+//	ZTI_INIT(ztest_dmu_object_claim_free, 1, &zopt_always),
+//	ZTI_INIT(ztest_dmu_object_next_chunk, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_commit_callbacks, 1, &zopt_always),
+//	ZTI_INIT(ztest_zap, 30, &zopt_always),
+//	ZTI_INIT(ztest_zap_parallel, 100, &zopt_always),
+//	ZTI_INIT(ztest_split_pool, 1, &zopt_always),
+//	ZTI_INIT(ztest_zil_commit, 1, &zopt_incessant),
+//	ZTI_INIT(ztest_zil_remount, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_read_write_zcopy, 1, &zopt_often),
+//	ZTI_INIT(ztest_dmu_objset_create_destroy, 1, &zopt_often),
+	ZTI_INIT(ztest_dmu_object_alloc_claim, 1, &zopt_often),
+//	ZTI_INIT(ztest_dsl_prop_get_set, 1, &zopt_often),
+//	ZTI_INIT(ztest_spa_prop_get_set, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_prealloc, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_fzap, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_snapshot_create_destroy, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_spa_create_destroy, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_fault_inject, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_dmu_snapshot_hold, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_mmp_enable_disable, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_reguid, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_scrub, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_spa_upgrade, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_dsl_dataset_promote_busy, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_vdev_attach_detach, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_vdev_LUN_growth, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_vdev_add_remove, 1, &ztest_opts.zo_vdevtime),
+//	ZTI_INIT(ztest_vdev_class_add, 1, &ztest_opts.zo_vdevtime),
+//	ZTI_INIT(ztest_vdev_aux_add_remove, 1, &ztest_opts.zo_vdevtime),
+//	ZTI_INIT(ztest_device_removal, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_spa_checkpoint_create_discard, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_initialize, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_trim, 1, &zopt_sometimes),
+//	ZTI_INIT(ztest_fletcher, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_fletcher_incr, 1, &zopt_rarely),
+//	ZTI_INIT(ztest_verify_dnode_bt, 1, &zopt_sometimes),
 };
 
 #define	ZTEST_FUNCS	(sizeof (ztest_info) / sizeof (ztest_info_t))
@@ -2009,7 +2011,7 @@ ztest_replay_create(void *arg1, void *arg2, boolean_t byteswap)
 	if (txg == 0)
 		return (ENOSPC);
 
-	ASSERT3U(dmu_objset_zil(os)->zl_replay, ==, !!lr->lr_foid);
+	//ASSERT3U(dmu_objset_zil(os)->zl_replay, ==, !!lr->lr_foid);
 	bonuslen = DN_BONUS_SIZE(lr->lrz_dnodesize);
 
 	if (lr->lrz_type == DMU_OT_ZAP_OTHER) {
@@ -2561,6 +2563,109 @@ ztest_lookup(ztest_ds_t *zd, ztest_od_t *od, int count)
 }
 
 static int
+ztest_claim(ztest_ds_t *zd, ztest_od_t *od, int count)
+{
+	int missing = 0;
+	int i;
+
+	ASSERT(MUTEX_HELD(&zd->zd_dirobj_lock));
+
+	for (i = 0; i < count; i++, od++) {
+		if (missing) {
+			od->od_object = 0;
+			missing++;
+			continue;
+		}
+
+		lr_create_t *lr = ztest_lr_alloc(sizeof (*lr), od->od_name);
+
+		lr->lr_doid = od->od_dir;
+		lr->lr_foid = ztest_random(10000) + i;	/* 0 to allocate, > 0 to claim */
+		lr->lrz_type = od->od_crtype;
+		lr->lrz_blocksize = od->od_crblocksize;
+		lr->lrz_ibshift = ztest_random_ibshift();
+		lr->lrz_bonustype = DMU_OT_UINT64_OTHER;
+		lr->lrz_dnodesize = od->od_crdnodesize;
+		lr->lr_gen = od->od_crgen;
+		lr->lr_crtime[0] = time(NULL);
+
+        printf("claiming foid: %lu, lrz_ibshift: %d, lrz_dnodesize: %d, idx: %d, slots: %d\n", lr->lr_foid, lr->lrz_ibshift, lr->lrz_dnodesize, lr->lr_foid & 31, lr->lrz_dnodesize >> 9);
+
+		if (ztest_replay_create(zd, lr, B_FALSE) != 0) {
+			ASSERT0(missing);
+			od->od_object = 0;
+			missing++;
+		} else {
+			od->od_object = lr->lr_foid;
+			od->od_type = od->od_crtype;
+			od->od_blocksize = od->od_crblocksize;
+			od->od_gen = od->od_crgen;
+			ASSERT3U(od->od_object, !=, 0);
+		}
+
+        printf("claim foid: %lu, od_object: %lu\n", lr->lr_foid, od->od_object);
+
+		ztest_lr_free(lr, sizeof (*lr), od->od_name);
+	}
+
+	return (missing);
+}
+
+
+static int
+ztest_create_claim(ztest_ds_t *zd, ztest_ds_t *zd2, ztest_od_t *od, int count)
+{
+	int missing = 0;
+	int i;
+
+	ASSERT(MUTEX_HELD(&zd->zd_dirobj_lock));
+
+	for (i = 0; i < count; i++, od++) {
+		if (missing) {
+			od->od_object = 0;
+			missing++;
+			continue;
+		}
+
+		lr_create_t *lr = ztest_lr_alloc(sizeof (*lr), od->od_name);
+
+		lr->lr_doid = od->od_dir;
+		lr->lr_foid = 0;	/* 0 to allocate, > 0 to claim */
+		lr->lrz_type = od->od_crtype;
+		lr->lrz_blocksize = od->od_crblocksize;
+		lr->lrz_ibshift = ztest_random_ibshift();
+		lr->lrz_bonustype = DMU_OT_UINT64_OTHER;
+		lr->lrz_dnodesize = od->od_crdnodesize;
+		lr->lr_gen = od->od_crgen;
+		lr->lr_crtime[0] = time(NULL);
+
+        printf("allocing foid: %lu, lrz_ibshift: %d, lrz_dnodesize: %d, idx: %d, slots: %d, doid: %d, name: %s\n",
+                lr->lr_foid, lr->lrz_ibshift, lr->lrz_dnodesize, lr->lr_foid & 31, lr->lrz_dnodesize >> 9, lr->lr_doid, (void*)(lr+1));
+		if (ztest_replay_create(zd, lr, B_FALSE) != 0) {
+			ASSERT0(missing);
+			od->od_object = 0;
+			missing++;
+		} else {
+			od->od_object = lr->lr_foid;
+			od->od_type = od->od_crtype;
+			od->od_blocksize = od->od_crblocksize;
+			od->od_gen = od->od_crgen;
+			ASSERT3U(od->od_object, !=, 0);
+
+            printf("claiming foid: %lu, lrz_ibshift: %d, lrz_dnodesize: %d, idx: %d, slots: %d, doid: %d, name: %s\n",
+                    lr->lr_foid, lr->lrz_ibshift, lr->lrz_dnodesize, lr->lr_foid & 31, lr->lrz_dnodesize >> 9, lr->lr_doid, (void*)(lr+1));
+            if (ztest_replay_create(zd2, lr, B_FALSE) != 0)
+                ASSERT(0);
+		}
+
+		ztest_lr_free(lr, sizeof (*lr), od->od_name);
+	}
+
+	return (missing);
+}
+
+
+static int
 ztest_create(ztest_ds_t *zd, ztest_od_t *od, int count)
 {
 	int missing = 0;
@@ -2869,6 +2974,55 @@ ztest_object_init(ztest_ds_t *zd, ztest_od_t *od, size_t size, boolean_t remove)
 
 	return (rv);
 }
+
+/*
+ * Lookup or create the objects for a test using the od template.
+ * If the objects do not all exist, or if 'remove' is specified,
+ * remove any existing objects and create new ones.  Otherwise,
+ * use the existing objects.
+ */
+static int
+ztest_object_init_create_claim(ztest_ds_t *zd, ztest_ds_t *zd2, ztest_od_t *od, size_t size, boolean_t remove)
+{
+	int count = size / sizeof (*od);
+	int rv = 0;
+
+	mutex_enter(&zd->zd_dirobj_lock);
+	if ((ztest_lookup(zd, od, count) != 0 || remove) &&
+	    (ztest_remove(zd, od, count) != 0 ||
+	    ztest_create_claim(zd, zd2, od, count) != 0))
+		rv = -1;
+	zd->zd_od = od;
+	zd2->zd_od = od;
+	mutex_exit(&zd->zd_dirobj_lock);
+
+	return (rv);
+}
+
+
+/*
+ * Lookup or create the objects for a test using the od template.
+ * If the objects do not all exist, or if 'remove' is specified,
+ * remove any existing objects and create new ones.  Otherwise,
+ * use the existing objects.
+ */
+static int
+ztest_object_init_claim(ztest_ds_t *zd, ztest_od_t *od, size_t size, boolean_t remove)
+{
+	int count = size / sizeof (*od);
+	int rv = 0;
+
+	mutex_enter(&zd->zd_dirobj_lock);
+	if ((ztest_lookup(zd, od, count) != 0 || remove) &&
+	    (ztest_remove(zd, od, count) != 0 ||
+	    ztest_claim(zd, od, count) != 0))
+		rv = -1;
+	zd->zd_od = od;
+	mutex_exit(&zd->zd_dirobj_lock);
+
+	return (rv);
+}
+
 
 void
 ztest_zil_commit(ztest_ds_t *zd, uint64_t id)
@@ -4426,6 +4580,152 @@ out:
 	umem_free(zdtmp, sizeof (ztest_ds_t));
 }
 
+void
+ztest_dmu_object_alloc_claim(ztest_ds_t *zd, uint64_t id)
+{
+    printf("%s, id: %ld\n", __func__, id);
+	(void) zd;
+	ztest_ds_t *zdtmp;
+	int iters;
+	int error;
+	objset_t *os, *os2;
+	char name[ZFS_MAX_DATASET_NAME_LEN];
+	zilog_t *zilog;
+	int i;
+
+	ztest_ds_t *zdtmp2;
+	char name2[ZFS_MAX_DATASET_NAME_LEN];
+	zilog_t *zilog2;
+
+	zdtmp = umem_alloc(sizeof (ztest_ds_t), UMEM_NOFAIL);
+	zdtmp2 = umem_alloc(sizeof (ztest_ds_t), UMEM_NOFAIL);
+
+	(void) pthread_rwlock_rdlock(&ztest_name_lock);
+
+	(void) snprintf(name, sizeof (name), "%s/temp_%"PRIu64"",
+	    ztest_opts.zo_pool, id);
+
+	(void) snprintf(name2, sizeof (name2), "%s/temp2_%"PRIu64"",
+	    ztest_opts.zo_pool, id);
+
+
+	/*
+	 * If this dataset exists from a previous run, process its replay log
+	 * half of the time.  If we don't replay it, then dsl_destroy_head()
+	 * (invoked from ztest_objset_destroy_cb()) should just throw it away.
+	 */
+	if (ztest_dmu_objset_own(name, DMU_OST_OTHER, B_FALSE,
+	    B_TRUE, FTAG, &os) == 0) {
+		ztest_zd_init(zdtmp, NULL, os);
+		zil_replay(os, zdtmp, ztest_replay_vector);
+		ztest_zd_fini(zdtmp);
+		dmu_objset_disown(os, B_TRUE, FTAG);
+	}
+
+	/*
+	 * There may be an old instance of the dataset we're about to
+	 * create lying around from a previous run.  If so, destroy it
+	 * and all of its snapshots.
+	 */
+	(void) dmu_objset_find(name, ztest_objset_destroy_cb, NULL,
+	    DS_FIND_CHILDREN | DS_FIND_SNAPSHOTS);
+
+	/*
+	 * Verify that the destroyed dataset is no longer in the namespace.
+	 */
+	VERIFY3U(ENOENT, ==, ztest_dmu_objset_own(name, DMU_OST_OTHER, B_TRUE,
+	    B_TRUE, FTAG, &os));
+
+	/*
+	 * Verify that we can create a new dataset.
+	 */
+	error = ztest_dataset_create(name);
+	if (error) {
+		if (error == ENOSPC) {
+			ztest_record_enospc(FTAG);
+			goto out;
+		}
+		fatal(B_FALSE, "dmu_objset_create(%s) = %d", name, error);
+	}
+
+	VERIFY0(ztest_dmu_objset_own(name, DMU_OST_OTHER, B_FALSE, B_TRUE,
+	    FTAG, &os));
+
+	ztest_zd_init(zdtmp, NULL, os);
+
+	/*
+	 * Open the intent log for it.
+	 */
+	zilog = zil_open(os, ztest_get_data);
+
+    // 2nd ds
+
+	if (ztest_dmu_objset_own(name2, DMU_OST_OTHER, B_FALSE,
+	    B_TRUE, FTAG, &os2) == 0) {
+		ztest_zd_init(zdtmp2, NULL, os2);
+		zil_replay(os2, zdtmp2, ztest_replay_vector);
+		ztest_zd_fini(zdtmp2);
+		dmu_objset_disown(os2, B_TRUE, FTAG);
+	}
+
+	(void) dmu_objset_find(name2, ztest_objset_destroy_cb, NULL,
+	    DS_FIND_CHILDREN | DS_FIND_SNAPSHOTS);
+
+	/*
+	 * Verify that the destroyed dataset is no longer in the namespace.
+	 */
+	VERIFY3U(ENOENT, ==, ztest_dmu_objset_own(name2, DMU_OST_OTHER, B_TRUE,
+	    B_TRUE, FTAG, &os2));
+
+	error = ztest_dataset_create(name2);
+	if (error) {
+		if (error == ENOSPC) {
+			ztest_record_enospc(FTAG);
+			goto out;
+		}
+		fatal(B_FALSE, "dmu_objset_create(%s) = %d", name2, error);
+	}
+
+	VERIFY0(ztest_dmu_objset_own(name2, DMU_OST_OTHER, B_FALSE, B_TRUE,
+	    FTAG, &os2));
+
+	ztest_zd_init(zdtmp2, NULL, os2);
+
+	/*
+	 * Open the intent log for it.
+	 */
+	zilog2 = zil_open(os2, ztest_get_data);
+
+	/*
+	 * Put some objects in there, do a little I/O to them,
+	 * and randomly take a couple of snapshots along the way.
+	 */
+	//iters = ztest_random(5);
+    iters = 1;
+	for (i = 0; i < iters; i++) {
+		do_ztest_dmu_object_alloc_claim(zdtmp, zdtmp2, id);
+		if (ztest_random(iters) == 0) {
+			(void) ztest_snapshot_create(name, i);
+			(void) ztest_snapshot_create(name2, i);
+        }
+	}
+
+	zil_close(zilog);
+	dmu_objset_disown(os, B_TRUE, FTAG);
+	ztest_zd_fini(zdtmp);
+
+	zil_close(zilog2);
+	dmu_objset_disown(os2, B_TRUE, FTAG);
+	ztest_zd_fini(zdtmp2);
+
+out:
+	(void) pthread_rwlock_unlock(&ztest_name_lock);
+
+	umem_free(zdtmp, sizeof (ztest_ds_t));
+	umem_free(zdtmp2, sizeof (ztest_ds_t));
+}
+
+
 /*
  * Verify that dmu_snapshot_{create,destroy,open,close} work as expected.
  */
@@ -4631,12 +4931,90 @@ ztest_dmu_object_alloc_free(ztest_ds_t *zd, uint64_t id)
 	if (ztest_object_init(zd, od, size, B_TRUE) != 0)
 		return;
 
-	while (ztest_random(4 * batchsize) != 0)
-		ztest_io(zd, od[ztest_random(batchsize)].od_object,
-		    ztest_random(ZTEST_RANGE_LOCKS) << SPA_MAXBLOCKSHIFT);
+	while (ztest_random(4 * batchsize) != 0) {
+        uint64_t obj = od[ztest_random(batchsize)].od_object;
+        uint64_t off = ztest_random(ZTEST_RANGE_LOCKS) << SPA_MAXBLOCKSHIFT;
+        printf("do io for obj: %lu, off: %lu\n", obj, off);
+		ztest_io(zd, obj, off);
+    }
 
 	umem_free(od, size);
 }
+
+/*
+ * Verify that dmu_object_{claim,free} work as expected.
+ */
+void
+ztest_dmu_object_claim_free(ztest_ds_t *zd, uint64_t id)
+{
+	ztest_od_t *od;
+	int batchsize;
+	int size;
+	int b;
+
+	size = sizeof (ztest_od_t) * OD_ARRAY_SIZE;
+	od = umem_alloc(size, UMEM_NOFAIL);
+	batchsize = OD_ARRAY_SIZE;
+
+	for (b = 0; b < batchsize; b++)
+		ztest_od_init(od + b, id, FTAG, b, DMU_OT_UINT64_OTHER,
+		    0, 0, 0);
+
+	/*
+	 * Destroy the previous batch of objects, create a new batch,
+	 * and do some I/O on the new objects.
+	 */
+	if (ztest_object_init_claim(zd, od, size, B_TRUE) != 0)
+		return;
+
+	while (ztest_random(4 * batchsize) != 0) {
+        uint64_t obj = od[ztest_random(batchsize)].od_object;
+        uint64_t off = ztest_random(ZTEST_RANGE_LOCKS) << SPA_MAXBLOCKSHIFT;
+        printf("do io for obj: %lu, off: %lu\n", obj, off);
+		ztest_io(zd, obj, off);
+    }
+
+	umem_free(od, size);
+}
+
+/*
+ * Verify that dmu_object_{alloc,free} work as expected.
+ */
+void
+do_ztest_dmu_object_alloc_claim(ztest_ds_t *zd, ztest_ds_t *zd2, uint64_t id)
+{
+	ztest_od_t *od;
+	int batchsize;
+	int size;
+	int b;
+
+	size = sizeof (ztest_od_t) * OD_ARRAY_SIZE;
+	od = umem_alloc(size, UMEM_NOFAIL);
+	batchsize = OD_ARRAY_SIZE;
+
+	for (b = 0; b < batchsize; b++)
+		ztest_od_init(od + b, id, FTAG, b, DMU_OT_UINT64_OTHER,
+		    0, 0, 0);
+
+	/*
+	 * Destroy the previous batch of objects, create a new batch,
+	 * and do some I/O on the new objects.
+	 */
+	if (ztest_object_init_create_claim(zd, zd2, od, size, B_TRUE) != 0)
+		return;
+
+	while (ztest_random(4 * batchsize) != 0) {
+        uint64_t obj = od[ztest_random(batchsize)].od_object;
+        uint64_t off = ztest_random(ZTEST_RANGE_LOCKS) << SPA_MAXBLOCKSHIFT;
+        printf("do io for zd: obj: %lu, off: %lu\n", obj, off);
+		ztest_io(zd, obj, off);
+        printf("do io for zd2: obj: %lu, off: %lu\n", obj, off);
+		ztest_io(zd2, obj, off);
+    }
+
+	umem_free(od, size);
+}
+
 
 /*
  * Rewind the global allocator to verify object allocation backfilling.
