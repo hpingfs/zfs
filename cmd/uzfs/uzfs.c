@@ -305,7 +305,6 @@ uzfs_do_stat(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -316,9 +315,6 @@ uzfs_do_stat(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("stat %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -381,7 +377,6 @@ uzfs_do_stat(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -394,7 +389,6 @@ uzfs_do_read(int argc, char **argv)
     char *path = argv[1];
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -405,9 +399,6 @@ uzfs_do_read(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("read %s: %s, offset: %d, size: %d\n", fsname, target_path, offset, size);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -475,7 +466,6 @@ uzfs_do_read(int argc, char **argv)
 
 out:
 
-	libzfs_close(zhp);
 
     return error;
 }
@@ -488,7 +478,6 @@ uzfs_do_write(int argc, char **argv)
     char *path = argv[1];
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -500,9 +489,6 @@ uzfs_do_write(int argc, char **argv)
     memcpy(buf, argv[4], strlen(argv[4]));
 
     printf("write %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -568,7 +554,6 @@ uzfs_do_write(int argc, char **argv)
 
 out:
 
-	libzfs_close(zhp);
 
     return error;
 }
@@ -578,7 +563,6 @@ uzfs_do_fsync(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -589,9 +573,6 @@ uzfs_do_fsync(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("write %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -650,8 +631,6 @@ uzfs_do_fsync(int argc, char **argv)
 
 out:
 
-	libzfs_close(zhp);
-
     return error;
 }
 
@@ -661,7 +640,6 @@ uzfs_do_setxattr(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -675,9 +653,6 @@ uzfs_do_setxattr(int argc, char **argv)
     char *value = argv[3];
 
     printf("setxattr %s: %s, name: %s, value: %s\n", fsname, target_path, name, value);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -736,7 +711,6 @@ uzfs_do_setxattr(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -747,7 +721,6 @@ uzfs_do_getxattr(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -760,9 +733,6 @@ uzfs_do_getxattr(int argc, char **argv)
     char *name = argv[2];
 
     printf("getxattr %s: %s, name: %s\n", fsname, target_path, name);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -825,7 +795,6 @@ uzfs_do_getxattr(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -835,7 +804,6 @@ uzfs_do_mkdir(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -846,9 +814,6 @@ uzfs_do_mkdir(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("mkdir %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -895,7 +860,6 @@ uzfs_do_mkdir(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 
@@ -906,7 +870,6 @@ uzfs_do_create(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -916,10 +879,8 @@ uzfs_do_create(int argc, char **argv)
     memcpy(fsname, path, fs_end - path);
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
-    printf("mkdir %s: %s\n", fsname, target_path);
+    printf("create %s: %s\n", fsname, target_path);
 
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -964,7 +925,6 @@ uzfs_do_create(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -975,7 +935,6 @@ uzfs_do_rm(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -986,9 +945,6 @@ uzfs_do_rm(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("rm %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1067,7 +1023,6 @@ uzfs_do_rm(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -1077,7 +1032,6 @@ uzfs_do_ls(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -1088,9 +1042,6 @@ uzfs_do_ls(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("ls %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1165,7 +1116,6 @@ uzfs_do_ls(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -1176,7 +1126,6 @@ uzfs_do_truncate(int argc, char **argv)
     int error = 0;
     char *path = argv[1];
     int size = atoi(argv[2]);
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -1187,9 +1136,6 @@ uzfs_do_truncate(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("truncate %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1258,7 +1204,6 @@ uzfs_do_truncate(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -1271,7 +1216,6 @@ uzfs_do_fallocate(int argc, char **argv)
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
     int mode = atoi(argv[4]);
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -1282,9 +1226,6 @@ uzfs_do_fallocate(int argc, char **argv)
     memcpy(target_path, fs_end + 3, strlen(path) - strlen(fsname) - 3);
 
     printf("fallocate %s: %s\n", fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1342,7 +1283,6 @@ uzfs_do_fallocate(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 }
@@ -1353,7 +1293,6 @@ uzfs_do_mv(int argc, char **argv)
     int error = 0;
     char *spath = argv[1];
     char *dst_path = argv[2];
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -1364,9 +1303,6 @@ uzfs_do_mv(int argc, char **argv)
     memcpy(src_path, fs_end + 3, strlen(spath) - strlen(fsname) - 3);
 
     printf("mv %s: %s %s\n", fsname, src_path, dst_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1437,7 +1373,6 @@ uzfs_do_mv(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 
@@ -1485,6 +1420,7 @@ static void* do_test(void* test_args)
 
     dino = ino;
 
+    int print_idx = num / 100;
     for (i = 0; i < num; i++) {
         sprintf(name, "%d", i);
         if (op == 0) {
@@ -1525,7 +1461,9 @@ static void* do_test(void* test_args)
             }
             //print_stat(name, &buf);
         }
-        //printf("succeeded to done %s\n", name);
+        if (print_idx != 0 && i % print_idx == 0) {
+            printf("tid %d: %d%\n", tid, i / print_idx);
+        }
     }
 
     if (op == 0 || op == 2) {
@@ -1554,7 +1492,6 @@ uzfs_test(int argc, char **argv)
     int branch = atoi(argv[4]);
     int num = atoi(argv[5]);
     int n_threads = atoi(argv[6]);
-	zfs_handle_t *zhp;
 	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
@@ -1587,9 +1524,6 @@ uzfs_test(int argc, char **argv)
     }
 
     printf("%s %s: %s\n", opstr, fsname, target_path);
-
-	if ((zhp = libzfs_open(g_zfs, fsname, types)) == NULL)
-		return (1);
 
     uint64_t fsid = 0;
     error = uzfs_init(fsname, &fsid);
@@ -1663,9 +1597,9 @@ uzfs_test(int argc, char **argv)
 out:
 
     uzfs_fini(fsid);
-	libzfs_close(zhp);
 
     return error;
 
 }
+
 
