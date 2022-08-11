@@ -138,6 +138,8 @@
 #include <execinfo.h> /* for backtrace() */
 #endif
 
+#include <libzfs.h>
+
 static int ztest_fd_data = -1;
 static int ztest_fd_rand = -1;
 
@@ -2702,6 +2704,10 @@ ztest_create(ztest_ds_t *zd, ztest_od_t *od, int count)
 			od->od_blocksize = od->od_crblocksize;
 			od->od_gen = od->od_crgen;
 			ASSERT3U(od->od_object, !=, 0);
+
+            printf("created foid: %lu, lrz_ibshift: %d, lrz_dnodesize: %d, idx: %d, slots: %d, doid: %d, name: %s\n",
+                    lr->lr_foid, lr->lrz_ibshift, lr->lrz_dnodesize, lr->lr_foid & 31, lr->lrz_dnodesize >> 9, lr->lr_doid, (void*)(lr+1));
+
 		}
 
 		ztest_lr_free(lr, sizeof (*lr), od->od_name);
@@ -8335,6 +8341,163 @@ ztest_run_init(void)
 	}
 }
 
+static void ztest_dump_doi(uint64_t object, dmu_object_info_t *doi)
+{
+    printf("object: %ld\n", object);
+    printf("\tdata_block_size: %d\n", doi->doi_data_block_size);
+    printf("\tmetadata_block_size: %d\n", doi->doi_metadata_block_size);
+    printf("\ttype: %d\n", doi->doi_type);
+    printf("\tbonus_type: %d\n", doi->doi_bonus_type);
+    printf("\tbonus_size: %ld\n", doi->doi_bonus_size);
+    printf("\tindirection: %d\n", doi->doi_indirection);
+    printf("\tchecksum: %d\n", doi->doi_checksum);
+    printf("\tcompress: %d\n", doi->doi_compress);
+    printf("\tnblkptr: %d\n", doi->doi_nblkptr);
+    printf("\tdnodesize: %ld\n", doi->doi_dnodesize);
+    printf("\tphysical_blocks_512: %ld\n", doi->doi_physical_blocks_512);
+    printf("\tmax_offset: %ld\n", doi->doi_max_offset);
+    printf("\tfill_count: %ld\n", doi->doi_fill_count);
+}
+
+static int
+uzfs_do_claim(int argc, char **argv)
+{
+    int error = 0;
+    char *spath = argv[1];
+	int types = ZFS_TYPE_FILESYSTEM;
+
+    char fsname[256] = "";
+    char src_path[256] = "";
+
+    char *fs_end = strstr(spath, "://");
+    memcpy(fsname, spath, fs_end - spath);
+    memcpy(src_path, fs_end + 3, strlen(spath) - strlen(fsname) - 3);
+
+    printf("claim %s: %s\n", fsname, src_path);
+
+    objset_t *os = NULL;
+    zilog_t *zilog = NULL;
+
+	error = dmu_objset_own(fsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", fsname);
+        goto out;
+    }
+
+    ztest_spa = os->os_spa;
+
+    zilog = zil_open(os, ztest_get_data);
+
+    ztest_ds_t *zd = umem_alloc(sizeof(ztest_ds_t), UMEM_NOFAIL);
+    ztest_zd_init(zd, NULL, os);
+
+
+    char data[1024] = "";
+    char data2[1024] = "";
+    dmu_read(os, 1011, 0, 1024, data, DMU_READ_NO_PREFETCH);
+    printf("data: %s\n", data);
+
+    //ztest_dmu_object_alloc_free(zd, 0);
+
+//    dmu_tx_t *tx = dmu_tx_create(os);
+//    dmu_tx_hold_write(tx, 1015, 0, 1024);
+//    error = dmu_tx_assign(tx, TXG_WAIT);
+//    if (error) {
+//        dmu_tx_abort(tx);
+//        goto out;
+//    }
+//    dmu_write(os, 1015, 0, 1024, data, tx);
+//    dmu_tx_commit(tx);
+
+	dmu_object_info_t doi;
+	dmu_tx_t *tx;
+	uint64_t object, txg;
+
+    object = 1037;
+
+	ztest_object_lock(zd, object, RL_WRITER);
+
+	VERIFY0(dmu_object_info(os, object, &doi));
+
+    ztest_dump_doi(object, &doi);
+
+	tx = dmu_tx_create(os);
+
+	dmu_tx_hold_free(tx, object, 0, DMU_OBJECT_END);
+
+	txg = ztest_tx_assign(tx, TXG_WAIT, FTAG);
+	if (txg == 0) {
+		ztest_object_unlock(zd, object);
+		return (ENOSPC);
+	}
+
+	if (doi.doi_type == DMU_OT_ZAP_OTHER) {
+		VERIFY0(zap_destroy(os, object, tx));
+	} else {
+		VERIFY0(dmu_object_free(os, object, tx));
+	}
+
+	dmu_tx_commit(tx);
+
+	ztest_object_unlock(zd, object);
+
+
+
+    //dmu_tx_t *tx = dmu_tx_create(os);
+    //dmu_tx_hold_free(tx, 1015, 0, DMU_OBJECT_END);
+    //error = dmu_tx_assign(tx, TXG_WAIT);
+    //if (error) {
+    //    dmu_tx_abort(tx);
+    //    goto out;
+    //}
+    //dmu_write(os, 1015, 0, 1024, data, tx);
+    //dmu_tx_commit(tx);
+
+    //dmu_read(os, 1015, 0, 1024, data2, DMU_READ_NO_PREFETCH);
+    //printf("data2: %s\n", data2);
+
+    //dmu_read(os, 1013, 0, 1024, data, DMU_READ_NO_PREFETCH);
+    //printf("data: %s\n", data);
+
+
+    //dmu_read(os, 1024, 0, 1024, data, DMU_READ_NO_PREFETCH);
+    //printf("data: %s\n", data);
+
+    //dmu_read(os, 1036, 0, 1024, data, DMU_READ_NO_PREFETCH);
+    //printf("data: %s\n", data);
+
+
+    dmu_objset_disown(os, B_TRUE, FTAG);
+
+out:
+    return error;
+
+}
+
+int main(int argc, char **argv)
+{
+    libzfs_handle_t *g_zfs;
+    if ((g_zfs = libzfs_init()) == NULL) {
+		(void) fprintf(stderr, "%s\n", libzfs_error_init(errno));
+		return (1);
+	}
+
+	/*
+	 * Force random_get_bytes() to use /dev/urandom in order to prevent
+	 * ztest from needlessly depleting the system entropy pool.
+	 */
+	random_path = "/dev/urandom";
+	ztest_fd_rand = open(random_path, O_RDONLY);
+	ASSERT3S(ztest_fd_rand, >=, 0);
+
+    uzfs_do_claim(argc, argv);
+
+	libzfs_fini(g_zfs);
+    return 0;
+}
+
+
+#if 0
 int
 main(int argc, char **argv)
 {
@@ -8584,3 +8747,4 @@ main(int argc, char **argv)
 
 	return (0);
 }
+#endif

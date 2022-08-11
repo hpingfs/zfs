@@ -40,7 +40,7 @@
 #include <pthread.h>
 
 libzfs_handle_t *g_zfs;
-
+static int uzfs_fd_rand = -1;
 static int uzfs_do_stat(int argc, char **argv);
 static int uzfs_do_read(int argc, char **argv);
 static int uzfs_do_write(int argc, char **argv);
@@ -55,7 +55,17 @@ static int uzfs_do_truncate(int argc, char **argv);
 static int uzfs_do_fallocate(int argc, char **argv);
 static int uzfs_do_mv(int argc, char **argv);
 
-static int uzfs_test(int argc, char **argv);
+static int uzfs_perf(int argc, char **argv);
+
+static int uzfs_olist(int argc, char **argv);
+static int uzfs_ostat(int argc, char **argv);
+static int uzfs_ocreate(int argc, char **argv);
+static int uzfs_oclaim(int argc, char **argv);
+static int uzfs_ocp(int argc, char **argv);
+static int uzfs_orm(int argc, char **argv);
+static int uzfs_oread(int argc, char **argv);
+static int uzfs_owrite(int argc, char **argv);
+static int uzfs_operf(int argc, char **argv);
 
 typedef enum {
 	HELP_STAT,
@@ -71,7 +81,16 @@ typedef enum {
 	HELP_TRUNCATE,
 	HELP_FALLOCATE,
 	HELP_MV,
-	HELP_TEST,
+	HELP_PERF,
+	HELP_OLIST,
+	HELP_OSTAT,
+	HELP_OCREATE,
+	HELP_OCLAIM,
+	HELP_OCP,
+	HELP_ORM,
+	HELP_OREAD,
+	HELP_OWRITE,
+	HELP_OPERF,
 } uzfs_help_t;
 
 typedef struct uzfs_command {
@@ -104,7 +123,19 @@ static uzfs_command_t command_table[] = {
 	{ "fallocate",	uzfs_do_fallocate, 	HELP_FALLOCATE		},
 	{ "mv",	uzfs_do_mv, 	HELP_MV		},
 
-	{ "test",	uzfs_test, 	HELP_TEST		},
+	{ "perf",	uzfs_perf, 	HELP_PERF		},
+
+    // following ops are object-based
+
+	{ "olist",	uzfs_olist, 	HELP_OLIST		},
+	{ "ostat",	uzfs_ostat, 	HELP_OSTAT		},
+	{ "ocreate",	uzfs_ocreate, 	HELP_OCREATE		},
+	{ "oclaim",	uzfs_oclaim, 	HELP_OCLAIM		},
+	{ "ocp",	uzfs_ocp, 	HELP_OCP		},
+	{ "orm",	uzfs_orm, 	HELP_ORM		},
+	{ "oread",	uzfs_oread, 	HELP_OREAD		},
+	{ "owrite",	uzfs_owrite, 	HELP_OWRITE		},
+	{ "operf",	uzfs_operf, 	HELP_OPERF		},
 };
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
@@ -139,8 +170,26 @@ get_usage(uzfs_help_t idx)
 		return (gettext("\tfallocate ...\n"));
     case HELP_MV:
 		return (gettext("\tmv ...\n"));
-	case HELP_TEST:
-		return (gettext("\ttest ...\n"));
+	case HELP_PERF:
+		return (gettext("\tperf ...\n"));
+	case HELP_OLIST:
+		return (gettext("\tolist ...\n"));
+	case HELP_OSTAT:
+		return (gettext("\tostat ...\n"));
+	case HELP_OCREATE:
+		return (gettext("\tocreate ...\n"));
+	case HELP_OCLAIM:
+		return (gettext("\toclaim ...\n"));
+	case HELP_OCP:
+		return (gettext("\tocp ...\n"));
+	case HELP_ORM:
+		return (gettext("\torm ...\n"));
+	case HELP_OREAD:
+		return (gettext("\toread ...\n"));
+	case HELP_OWRITE:
+		return (gettext("\towrite ...\n"));
+	case HELP_OPERF:
+		return (gettext("\toperf ...\n"));
 	default:
 		__builtin_unreachable();
 	}
@@ -237,6 +286,11 @@ main(int argc, char **argv)
 
 	libzfs_print_on_error(g_zfs, B_TRUE);
 
+	char *random_path = "/dev/urandom";
+	uzfs_fd_rand = open(random_path, O_RDONLY);
+	ASSERT3S(uzfs_fd_rand, >=, 0);
+
+
 	/*
 	 * Many commands modify input strings for string parsing reasons.
 	 * We create a copy to protect the original argv.
@@ -305,7 +359,6 @@ uzfs_do_stat(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -389,7 +442,6 @@ uzfs_do_read(int argc, char **argv)
     char *path = argv[1];
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -478,7 +530,6 @@ uzfs_do_write(int argc, char **argv)
     char *path = argv[1];
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -563,7 +614,6 @@ uzfs_do_fsync(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -640,7 +690,6 @@ uzfs_do_setxattr(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -721,7 +770,6 @@ uzfs_do_getxattr(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -804,7 +852,6 @@ uzfs_do_mkdir(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -870,7 +917,6 @@ uzfs_do_create(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -935,7 +981,6 @@ uzfs_do_rm(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -1032,7 +1077,6 @@ uzfs_do_ls(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -1126,7 +1170,6 @@ uzfs_do_truncate(int argc, char **argv)
     int error = 0;
     char *path = argv[1];
     int size = atoi(argv[2]);
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -1216,7 +1259,6 @@ uzfs_do_fallocate(int argc, char **argv)
     int offset = atoi(argv[2]);
     int size = atoi(argv[3]);
     int mode = atoi(argv[4]);
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -1293,7 +1335,6 @@ uzfs_do_mv(int argc, char **argv)
     int error = 0;
     char *spath = argv[1];
     char *dst_path = argv[2];
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char src_path[256] = "";
@@ -1379,7 +1420,7 @@ out:
 }
 
 
-struct test_args {
+struct perf_args {
     uint64_t fsid;
     uint64_t dino;
     int op;
@@ -1387,9 +1428,9 @@ struct test_args {
     int tid;
 };
 
-static void* do_test(void* test_args)
+static void* do_perf(void* perf_args)
 {
-    struct test_args* args = test_args;
+    struct perf_args* args = perf_args;
     uint64_t fsid = args->fsid;
     uint64_t root_ino = args->dino;
     int op = args->op;
@@ -1462,7 +1503,7 @@ static void* do_test(void* test_args)
             //print_stat(name, &buf);
         }
         if (print_idx != 0 && i % print_idx == 0) {
-            printf("tid %d: %d%\n", tid, i / print_idx);
+            printf("tid %d: %d%%\n", tid, i / print_idx);
         }
     }
 
@@ -1483,7 +1524,7 @@ out:
 }
 
 static int
-uzfs_test(int argc, char **argv)
+uzfs_perf(int argc, char **argv)
 {
     int error = 0;
     char *path = argv[1];
@@ -1492,7 +1533,6 @@ uzfs_test(int argc, char **argv)
     int branch = atoi(argv[4]);
     int num = atoi(argv[5]);
     int n_threads = atoi(argv[6]);
-	int types = ZFS_TYPE_FILESYSTEM;
 
     char fsname[256] = "";
     char target_path[256] = "";
@@ -1567,14 +1607,14 @@ uzfs_test(int argc, char **argv)
     clock_t start, end;
     start = clock();
     pthread_t ntids[100];
-    struct test_args args[100];
+    struct perf_args args[100];
     for (i = 0; i < n_threads; i++) {
         args[i].fsid = fsid;
         args[i].dino = dino;
         args[i].op = op;
         args[i].num = num;
         args[i].tid = i;
-        error = pthread_create(&ntids[i], NULL, do_test, (void*)&args[i]);
+        error = pthread_create(&ntids[i], NULL, do_perf, (void*)&args[i]);
         if  (error != 0) {
             printf("Failed to create thread: %s\n" ,  strerror (error));
             goto out;
@@ -1602,4 +1642,753 @@ out:
 
 }
 
+#include <sys/spa.h>
+#include <sys/dmu.h>
+#include <sys/txg.h>
+#include <sys/dbuf.h>
+#include <sys/zap.h>
+#include <sys/dmu_objset.h>
+#include <sys/poll.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/zio.h>
+#include <sys/zil.h>
+#include <sys/zil_impl.h>
+#include <sys/vdev_draid.h>
+#include <sys/vdev_impl.h>
+#include <sys/vdev_file.h>
+#include <sys/vdev_initialize.h>
+#include <sys/vdev_raidz.h>
+#include <sys/vdev_trim.h>
+#include <sys/spa_impl.h>
+#include <sys/metaslab_impl.h>
+#include <sys/dsl_prop.h>
+#include <sys/dsl_dataset.h>
+#include <sys/dsl_destroy.h>
+#include <sys/dsl_scan.h>
+#include <sys/zio_checksum.h>
+#include <sys/zfs_refcount.h>
+#include <sys/zfeature.h>
+#include <sys/dsl_userhold.h>
+#include <sys/abd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <signal.h>
+#include <umem.h>
+#include <ctype.h>
+#include <math.h>
+#include <sys/fs/zfs.h>
+#include <zfs_fletcher.h>
+#include <libnvpair.h>
+#include <libzutil.h>
+#include <sys/crypto/icp.h>
+#if (__GLIBC__ && !__UCLIBC__)
+#include <execinfo.h> /* for backtrace() */
+#endif
 
+static spa_t *uzfs_spa = NULL;
+
+static char *
+uzfs_ot_name(dmu_object_type_t type)
+{
+	if (type < DMU_OT_NUMTYPES)
+		return (dmu_ot[type].ot_name);
+	else if ((type & DMU_OT_NEWTYPE) &&
+	    ((type & DMU_OT_BYTESWAP_MASK) < DMU_BSWAP_NUMFUNCS))
+		return (dmu_ot_byteswap[type & DMU_OT_BYTESWAP_MASK].ob_name);
+	else
+		return ("UNKNOWN");
+}
+
+static void uzfs_dump_doi(uint64_t object, dmu_object_info_t *doi)
+{
+
+    printf("object: %ld\n", object);
+    printf("\tdata_block_size: %d\n", doi->doi_data_block_size);
+    printf("\tmetadata_block_size: %d\n", doi->doi_metadata_block_size);
+    printf("\ttype: %s\n", uzfs_ot_name(doi->doi_type));
+    printf("\tbonus_type: %s\n", uzfs_ot_name(doi->doi_bonus_type));
+    printf("\tbonus_size: %ld\n", doi->doi_bonus_size);
+    printf("\tindirection: %d\n", doi->doi_indirection);
+    printf("\tchecksum: %d\n", doi->doi_checksum);
+    printf("\tcompress: %d\n", doi->doi_compress);
+    printf("\tnblkptr: %d\n", doi->doi_nblkptr);
+    printf("\tdnodesize: %ld\n", doi->doi_dnodesize);
+    printf("\tphysical_blocks_512: %ld\n", doi->doi_physical_blocks_512);
+    printf("\tmax_offset: %ld\n", doi->doi_max_offset);
+    printf("\tfill_count: %ld\n", doi->doi_fill_count);
+}
+
+static uint64_t
+uzfs_random(uint64_t range)
+{
+	uint64_t r;
+
+	ASSERT3S(uzfs_fd_rand, >=, 0);
+
+	if (range == 0)
+		return (0);
+
+	if (read(uzfs_fd_rand, &r, sizeof (r)) != sizeof (r))
+        ASSERT(0);
+
+	return (r % range);
+}
+
+
+static int
+uzfs_random_blocksize(void)
+{
+	ASSERT3U(uzfs_spa->spa_max_ashift, !=, 0);
+
+	/*
+	 * Choose a block size >= the ashift.
+	 * If the SPA supports new MAXBLOCKSIZE, test up to 1MB blocks.
+	 */
+	int maxbs = SPA_OLD_MAXBLOCKSHIFT;
+	if (spa_maxblocksize(uzfs_spa) == SPA_MAXBLOCKSIZE)
+		maxbs = 20;
+	uint64_t block_shift =
+	    uzfs_random(maxbs - uzfs_spa->spa_max_ashift + 1);
+	return (1 << (SPA_MINBLOCKSHIFT + block_shift));
+}
+
+static int
+uzfs_random_dnodesize(void)
+{
+	int slots;
+	int max_slots = spa_maxdnodesize(uzfs_spa) >> DNODE_SHIFT;
+
+	if (max_slots == DNODE_MIN_SLOTS)
+		return (DNODE_MIN_SIZE);
+
+	/*
+	 * Weight the random distribution more heavily toward smaller
+	 * dnode sizes since that is more likely to reflect real-world
+	 * usage.
+	 */
+	ASSERT3U(max_slots, >, 4);
+	switch (uzfs_random(10)) {
+	case 0:
+		slots = 5 + uzfs_random(max_slots - 4);
+		break;
+	case 1 ... 4:
+		slots = 2 + uzfs_random(3);
+		break;
+	default:
+		slots = 1;
+		break;
+	}
+
+	return (slots << DNODE_SHIFT);
+}
+
+static int
+uzfs_random_ibshift(void)
+{
+	return (DN_MIN_INDBLKSHIFT +
+	    uzfs_random(DN_MAX_INDBLKSHIFT - DN_MIN_INDBLKSHIFT + 1));
+}
+
+static int uzfs_do_ostat(objset_t *os, uint64_t obj, boolean_t slience)
+{
+    dmu_object_info_t doi;
+    dmu_buf_t *db;
+
+    int error = 0;
+
+    error = dmu_bonus_hold(os, obj, FTAG, &db);
+    if (error)
+        return error;
+
+    dmu_object_info_from_db(db, &doi);
+
+    if (!slience)
+        uzfs_dump_doi(obj, &doi);
+
+    dmu_buf_rele(db, FTAG);
+    return 0;
+}
+
+static int uzfs_do_olist(objset_t *os)
+{
+    uint64_t obj;
+    int err;
+    int i = 0;
+
+	for (obj = 0; err == 0; err = dmu_object_next(os, &obj, B_FALSE, 0)) {
+        if (uzfs_do_ostat(os, obj, B_FALSE)) {
+            printf("skip obj w/o bonus buf: %ld\n", obj);
+            continue;
+        }
+        i++;
+    }
+
+    return i;
+}
+
+static int
+uzfs_olist(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+
+    printf("olist %s\n", dsname);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    int num = uzfs_do_olist(os);
+
+    dmu_objset_disown(os, B_TRUE, FTAG);
+
+    printf("olist done, total num: %d\n", num);
+
+out:
+
+    return error;
+}
+
+static int
+uzfs_ostat(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    uint64_t obj = atoi(argv[2]);
+
+    printf("ostat %s:%ld\n", dsname, obj);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    if (uzfs_do_ostat(os, obj, B_FALSE)) {
+        printf("skip obj w/o bonus buf: %ld\n", obj);
+    }
+
+    dmu_objset_disown(os, B_TRUE, FTAG);
+
+out:
+
+    return error;
+}
+
+
+static int
+uzfs_do_ocreate(objset_t *os, uint64_t *obj)
+{
+    int error = 0;
+    dmu_tx_t *tx;
+    dmu_buf_t *db;
+
+    tx = dmu_tx_create(os);
+
+    dmu_tx_hold_bonus(tx, DMU_NEW_OBJECT);
+
+	error = dmu_tx_assign(tx, TXG_WAIT);
+    if (error) {
+        dmu_tx_abort(tx);
+        goto out;
+    }
+
+    int dnodesize = uzfs_random_dnodesize();
+    int bonuslen = DN_BONUS_SIZE(dnodesize);
+    int blocksize = uzfs_random_blocksize();
+    int ibshift = uzfs_random_ibshift();
+
+    *obj = dmu_object_alloc_dnsize(os, DMU_OT_UINT64_OTHER, 0, DMU_OT_UINT64_OTHER,
+                                   bonuslen, dnodesize, tx);
+
+    VERIFY0(dmu_object_set_blocksize(os, *obj, blocksize, ibshift, tx));
+    VERIFY0(dmu_bonus_hold(os, *obj, FTAG, &db));
+	dmu_buf_will_dirty(db, tx);
+	dmu_buf_rele(db, FTAG);
+    dmu_tx_commit(tx);
+
+out:
+    return error;
+}
+
+static int
+uzfs_ocreate(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+
+    printf("ocreate %s\n", dsname);
+
+    objset_t *os = NULL;
+
+    error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    uzfs_spa = os->os_spa;
+
+    uint64_t obj = 0;
+    error = uzfs_do_ocreate(os, &obj);
+    if (error)
+        goto out;
+
+    uzfs_do_ostat(os, obj, B_FALSE);
+
+out:
+ if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
+
+static int uzfs_do_orm(objset_t *os, uint64_t obj)
+{
+    int error = 0;
+    dmu_tx_t *tx;
+
+    tx = dmu_tx_create(os);
+
+    dmu_tx_hold_free(tx, obj, 0, DMU_OBJECT_END);
+
+	error = dmu_tx_assign(tx, TXG_WAIT);
+    if (error) {
+        dmu_tx_abort(tx);
+        goto out;
+    }
+
+	VERIFY0(dmu_object_free(os, obj, tx));
+
+    dmu_tx_commit(tx);
+
+out:
+    return error;
+
+}
+
+static int
+uzfs_orm(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    uint64_t obj = atoi(argv[2]);
+
+    printf("orm %s: %ld\n", dsname, obj);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    error = uzfs_do_ostat(os, obj, B_FALSE);
+    if (error)
+       goto out;
+
+    error = uzfs_do_orm(os, obj);
+
+out:
+    if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
+
+static int
+uzfs_do_owrite(objset_t *os, uint64_t obj, int offset, int size, char *buf)
+{
+    int error = 0;
+    dmu_tx_t *tx;
+
+    tx = dmu_tx_create(os);
+
+    dmu_tx_hold_write(tx, obj, offset, size);
+
+	error = dmu_tx_assign(tx, TXG_WAIT);
+    if (error) {
+        dmu_tx_abort(tx);
+        goto out;
+    }
+
+    dmu_write(os, obj, offset, size, buf, tx);
+
+    dmu_tx_commit(tx);
+
+out:
+    return error;
+}
+
+static int
+uzfs_owrite(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    uint64_t obj = atoi(argv[2]);
+    int offset = atoi(argv[3]);
+    int size = atoi(argv[4]);
+    char buf[1024] = "";
+    memcpy(buf, argv[5], strlen(argv[5]));
+
+    printf("owrite %s: %ld, off: %d, size: %d\n", dsname, obj, offset, size);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    error = uzfs_do_ostat(os, obj, B_FALSE);
+    if (error)
+        goto out;
+
+    error = uzfs_do_owrite(os, obj, offset, size, buf);
+
+out:
+    if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
+
+
+static int
+uzfs_oread(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    uint64_t obj = atoi(argv[2]);
+    int offset = atoi(argv[3]);
+    int size = atoi(argv[4]);
+    char buf[1024] = "";
+
+    printf("oread %s: %ld, off: %d, size: %d\n", dsname, obj, offset, size);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    uzfs_spa = os->os_spa;
+
+    error = uzfs_do_ostat(os, obj, B_FALSE);
+    if (error)
+        goto out;
+
+    dmu_read(os, obj, offset, size, buf, DMU_READ_NO_PREFETCH);
+
+    printf("%s\n", buf);
+
+out:
+    if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
+
+static int
+uzfs_do_oclaim(objset_t *os, uint64_t obj)
+{
+    int error = 0;
+    dmu_tx_t *tx;
+    dmu_buf_t *db;
+
+    int dnodesize = 512;
+    int bonuslen = DN_BONUS_SIZE(dnodesize);
+    int type = DMU_OT_UINT64_OTHER;
+    int bonus_type = DMU_OT_UINT64_OTHER;
+    int blocksize = 512;
+    int ibs = 17; // 128k
+
+    tx = dmu_tx_create(os);
+
+    dmu_tx_hold_bonus(tx, DMU_NEW_OBJECT);
+
+	error = dmu_tx_assign(tx, TXG_WAIT);
+    if (error) {
+        dmu_tx_abort(tx);
+        goto out;
+    }
+
+    error = dmu_object_claim_dnsize(os, obj, type, 0, bonus_type, bonuslen, dnodesize, tx);
+    if (error)
+        goto out;
+
+    VERIFY0(dmu_object_set_blocksize(os, obj, blocksize, ibs, tx));
+    VERIFY0(dmu_bonus_hold(os, obj, FTAG, &db));
+	dmu_buf_will_dirty(db, tx);
+	dmu_buf_rele(db, FTAG);
+    dmu_tx_commit(tx);
+
+out:
+    return error;
+}
+
+static int
+uzfs_oclaim(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    uint64_t obj = atoi(argv[2]);
+
+    printf("oclaim %s: %ld\n", dsname, obj);
+
+    objset_t *os = NULL;
+
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    error = uzfs_do_oclaim(os, obj);
+    if (error)
+        goto out;
+
+    error = uzfs_do_ostat(os, obj, B_FALSE);
+    if (error)
+        goto out;
+
+out:
+ if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
+
+
+static int
+uzfs_do_ocp(objset_t *os, uint64_t obj, dmu_object_info_t *doi)
+{
+    int error = 0;
+    dmu_tx_t *tx;
+    dmu_buf_t *db;
+
+    int bonuslen = doi->doi_bonus_size;
+    int dnodesize = doi->doi_dnodesize;
+    int type = doi->doi_type;
+    int bonus_type = doi->doi_bonus_type;
+    int blocksize = doi->doi_data_block_size;
+    int ibs = doi->doi_metadata_block_size ? ilog2(doi->doi_metadata_block_size) : 0;
+
+    tx = dmu_tx_create(os);
+
+    dmu_tx_hold_bonus(tx, DMU_NEW_OBJECT);
+
+	error = dmu_tx_assign(tx, TXG_WAIT);
+    if (error) {
+        dmu_tx_abort(tx);
+        goto out;
+    }
+
+    error = dmu_object_claim_dnsize(os, obj, type, 0, bonus_type, bonuslen, dnodesize, tx);
+    if (error)
+        goto out;
+
+    VERIFY0(dmu_object_set_blocksize(os, obj, blocksize, ibs, tx));
+    VERIFY0(dmu_bonus_hold(os, obj, FTAG, &db));
+	dmu_buf_will_dirty(db, tx);
+	dmu_buf_rele(db, FTAG);
+    dmu_tx_commit(tx);
+
+out:
+    return error;
+}
+
+static int
+uzfs_ocp(int argc, char **argv)
+{
+    int error = 0;
+    char *src = argv[1];
+    char *dst = argv[2];
+    uint64_t obj = atoi(argv[3]);
+
+    printf("ocp %s: %ld to %s\n", src, obj, dst);
+
+    objset_t *srcos = NULL;
+    objset_t *dstos = NULL;
+
+	error = dmu_objset_own(src, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &srcos);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", src);
+        goto out;
+    }
+
+	error = dmu_objset_own(dst, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &dstos);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dst);
+        goto out;
+    }
+
+    error = uzfs_do_ostat(srcos, obj, B_FALSE);
+    if (error)
+        goto out;
+
+    dmu_object_info_t doi;
+    dmu_object_info(srcos, obj, &doi);
+
+    error = uzfs_do_ocp(dstos, obj, &doi);
+    if (error)
+        goto out;
+
+    error = uzfs_do_ostat(dstos, obj, B_FALSE);
+    if (error)
+        goto out;
+
+out:
+ if (srcos)
+        dmu_objset_disown(srcos, B_TRUE, FTAG);
+ if (dstos)
+        dmu_objset_disown(dstos, B_TRUE, FTAG);
+
+    return error;
+}
+
+struct operf_args {
+    objset_t *os;
+    int op;
+    int num;
+    int tid;
+};
+
+static void* do_operf(void* operf_args)
+{
+    struct operf_args* args = operf_args;
+    objset_t *os = args->os;
+    int op = args->op;
+    int num = args->num;
+    uint64_t tid = args->tid + 1;
+    int error = 0;
+    int i = 0;
+    uint64_t obj = 0;
+
+    printf("tid: %ld\n", tid);
+
+    int print_idx = num / 100;
+    for (i = 0; i < num; i++) {
+        obj = tid << 32 | i;
+        if (op == 0) {
+            error = uzfs_do_orm(os, obj);
+            if (error) {
+                printf("Failed to rm obj %ld\n", obj);
+                goto out;
+            }
+        } else if (op == 1) {
+            error = uzfs_do_oclaim(os, obj);
+            if (error) {
+                printf("Failed to claim obj %ld\n", obj);
+                goto out;
+            }
+        } else if (op == 2) {
+            error = uzfs_do_ostat(os, obj, B_TRUE);
+            if (error) {
+                printf("Failed to stat obj %ld\n", obj);
+                goto out;
+            }
+        }
+        if (print_idx != 0 && i % print_idx == 0) {
+            printf("tid %ld: %d%%\n", tid, i / print_idx);
+        }
+    }
+    printf("tid: %ld done\n", tid);
+
+out:
+    return NULL;
+}
+
+
+static int
+uzfs_operf(int argc, char **argv)
+{
+    int error = 0;
+    char *dsname = argv[1];
+    int op = atoi(argv[2]); // 0: rm, 1: create, 2: stat
+    int num = atoi(argv[3]);
+    int n_threads = atoi(argv[4]);
+
+    char *opstr = NULL;
+
+    switch (op) {
+        case 0:
+            opstr = "remove";
+            break;
+        case 1:
+            opstr = "create";
+            break;
+        case 2:
+            opstr = "stat";
+            break;
+        default:
+            printf("invalid op: %d\n", op);
+            return -1;
+    }
+
+    printf("%s %s\n", opstr, dsname);
+
+    objset_t *os;
+	error = dmu_objset_own(dsname, DMU_OST_ZFS, B_FALSE, B_TRUE, FTAG, &os);
+    if (error != 0) {
+        printf("Failed to own objset: %s\n", dsname);
+        goto out;
+    }
+
+    struct timeval t1,t2;
+    double timeuse;
+    gettimeofday(&t1,NULL);
+
+    int i;
+    clock_t start, end;
+    start = clock();
+    pthread_t ntids[100];
+    struct operf_args args[100];
+    for (i = 0; i < n_threads; i++) {
+        args[i].os = os;
+        args[i].op = op;
+        args[i].num = num;
+        args[i].tid = i;
+        error = pthread_create(&ntids[i], NULL, do_operf, (void*)&args[i]);
+        if  (error != 0) {
+            printf("Failed to create thread: %s\n" ,  strerror (error));
+            goto out;
+        }
+
+    }
+    for (i = 0; i < n_threads; i++) {
+        pthread_join(ntids[i],NULL);
+    }
+
+    end = clock();
+    gettimeofday(&t2,NULL);
+    timeuse = (t2.tv_sec - t1.tv_sec) + (double)(t2.tv_usec - t1.tv_usec)/1000000.0;
+
+    int totalnum = num * n_threads;
+    double clockuse = ((double)(end - start))/CLOCKS_PER_SEC;
+    double rate = totalnum / timeuse;
+    printf("num: %d\ntime=%fs\nclock=%fs\nrate=%f\n", totalnum, timeuse, clockuse, rate);
+
+out:
+
+    if (os)
+        dmu_objset_disown(os, B_TRUE, FTAG);
+
+    return error;
+}
