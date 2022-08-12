@@ -7735,6 +7735,8 @@ zfs_ioctl_init(void)
 }
 
 
+static zfsdev_state_t *zfsdev_state_list;
+
 int
 zfs_kmod_init(void)
 {
@@ -7812,8 +7814,6 @@ zfs_kmod_fini(void)
 }
 
 #ifdef _KERNEL
-
-static zfsdev_state_t *zfsdev_state_list;
 
 int
 zfsdev_getminor(zfs_file_t *fp, minor_t *minorp)

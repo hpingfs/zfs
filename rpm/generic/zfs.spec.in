@@ -93,8 +93,8 @@ Requires:       libzpool5 = %{version}
 Requires:       libnvpair3 = %{version}
 Requires:       libuutil3 = %{version}
 Requires:       libzfs5 = %{version}
-Requires:       %{name}-kmod = %{version}
-Provides:       %{name}-kmod-common = %{version}
+#Requires:       %{name}-kmod = %{version}
+#Provides:       %{name}-kmod-common = %{version}
 Obsoletes:      spl
 
 # zfs-fuse provides the same commands and man pages that OpenZFS does.

@@ -68,3 +68,5 @@ venv
 *.so
 *.so.debug
 *.so.full
+
+cmd/uzfs/uzfs

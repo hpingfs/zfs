@@ -123,6 +123,7 @@ extern "C" {
 #include <sys/trace_zfs.h>
 
 #include <sys/zfs_context_os.h>
+#include <sys/uio_impl.h>
 
 /*
  * Stack

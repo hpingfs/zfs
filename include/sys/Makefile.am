@@ -129,7 +129,10 @@ COMMON_H = \
 	zio_impl.h \
 	zio_priority.h \
 	zrlock.h \
-	zthr.h
+	zthr.h \
+	gfp.h \
+	uspl.h \
+	kernel.h
 
 KERNEL_H = \
 	zfs_ioctl.h \

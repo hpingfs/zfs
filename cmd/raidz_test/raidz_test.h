@@ -80,10 +80,10 @@ static const raidz_test_opts_t rto_opts_defaults = {
 
 extern raidz_test_opts_t rto_opts;
 
-static inline size_t ilog2(size_t a)
-{
-	return (a > 1 ? 1 + ilog2(a >> 1) : 0);
-}
+//static inline size_t ilog2(size_t a)
+//{
+//	return (a > 1 ? 1 + ilog2(a >> 1) : 0);
+//}
 
 
 #define	D_ALL	0
